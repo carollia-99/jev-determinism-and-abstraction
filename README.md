@@ -19,9 +19,11 @@ natural-language prompt
 
 Jev does not generate pixels or JavaScript. It selects a point in a deliberately expressive art grammar: literal gradient colors and direction, composition, palette, contrast, space, atmosphere, texture, motion, and four coordinated layers of mark-making. Explicit constraints are preserved before poetic interpretation, so “red yellow gradient” becomes literal `RED → YELLOW` Canvas color stops. The browser's fixed renderer turns that complete specification into deterministic Canvas 2D artwork.
 
-The prompt UI also has a **Full ArtSpec model** comparison path. “Full ArtSpec” means that one conventional language-model call fills every one of the renderer's 80 typed fields in a single schema-validated response; the model still does not generate pixels or executable JavaScript. The picker can route that call through AI Gateway to Claude Haiku 4.5, Claude Sonnet 4.6, GPT-5.4 Mini, or GPT-5.4. Both paths use the same literal-color and compatibility repair pass, prompt-derived seed, state update, and fixed renderer, so their latency, token use, cost, and artwork can be compared without changing the rendering system. This first comparison milestone has no fallback or automatic routing.
+The prompt UI also has a **Full ArtSpec model** comparison path. “Full ArtSpec” means that one conventional language-model call fills every one of the renderer's 80 typed fields in a single schema-validated response; the model still does not generate pixels or executable JavaScript. The picker can route that call through AI Gateway to Claude Haiku 4.5, Claude Sonnet 4.6, GPT-5.4 Mini, or GPT-5.4. Both paths use the same literal-color and compatibility repair pass, prompt-derived seed, state update, and fixed renderer, so their latency, token use, cost, and artwork can be compared without changing the rendering system.
 
-The same prompt receives the same seed and layout. Motion stays live, but the composition remains stable. Low-confidence optional effects fall back to restrained defaults, irrelevant categories are never asked, and incompatible combinations such as lightening blends on white are repaired before rendering. A decision debugger exposes literal constraints, every Tier 1 answer, the routing handoff, every Tier 2 answer and probability distribution, compiler overrides, the final ArtSpec, and exact AI Gateway cost, tokens, and latency. Its default exception view emphasizes low-confidence and repaired decisions; the full view remains available on demand.
+The third **Code + Sandbox** path deliberately crosses that boundary. The model selected in the same picker writes a complete, prompt-specific Canvas 2D JavaScript program rather than selecting an ArtSpec. The server rejects imports, network and storage APIs, parent-window access, and dynamic evaluation; Vercel Sandbox then syntax-checks and smoke-executes the program in a network-isolated microVM. A time-limited static server exposes the validated artwork to a browser iframe that allows scripts but not same-origin access. The session receipt separates model generation from Sandbox execution. Sandbox execution time is surfaced, but no Sandbox dollar cost is invented when the API does not report one.
+
+The same prompt receives the same seed and layout. Motion stays live, but the composition remains stable. Low-confidence optional effects fall back to restrained defaults, irrelevant categories are never asked, and incompatible combinations such as lightening blends on white are repaired before rendering. The compact decision trace shows the resulting visual choices, while the session receipt exposes exact AI Gateway cost, tokens, and latency.
 
 ## Decision surface
 
@@ -29,10 +31,6 @@ The same prompt receives the same seed and layout. Motion stays live, but the co
 - 52 layer choices: four layers each decide primitive, distribution, density, scale, scale variation, color role, fill, stroke, opacity, blend mode, rotation, noise, and repetition.
 - 9 relevance scores route palette, composition, marks, space, motion, texture, symmetry, atmosphere, and disorder into only the useful detail families. Literal named colors automatically make palette decisions essential.
 - Total: 17 thesis, semantic-anchor, and characteristic-relevance decisions plus a conditional subset of the 80-detail decision surface. Most prompts use two fast Jev calls; prompts with low-confidence core routing receive one small targeted clarification call before details.
-
-Generated-JavaScript capabilities from the earlier motion-study milestone remain in the repository as an experiment, but they are no longer the main path. Because the normal art path executes only the fixed renderer, it does not require code generation or Vercel Sandbox.
-
-> **Sandbox reminder:** the earlier generated-motion experiment still runs generated JavaScript locally after narrow static checks. Add Vercel Sandbox before treating that legacy path as production-safe.
 
 ## Local setup
 
@@ -48,9 +46,20 @@ Add a Vercel AI Gateway key to `.env.local`:
 AI_GATEWAY_API_KEY=your_gateway_key_here
 # Optional server default; the UI picker overrides it per request
 COMPARISON_MODEL=anthropic/claude-sonnet-4.6
+# Optional model for the Code + Sandbox route
+SANDBOX_CODE_MODEL=anthropic/claude-sonnet-4.6
 ```
 
 The key is read only by the local server middleware and the deployed Vercel Function. It is never included in the browser bundle. On Vercel, the function can use the platform-provided OIDC token instead.
+
+For local Sandbox previews, link the project and pull its Vercel environment so the SDK receives an OIDC token:
+
+```bash
+vercel link
+vercel env pull
+```
+
+The other two routes continue to work without local Sandbox credentials.
 
 ## Verification
 
@@ -61,11 +70,11 @@ npm run build
 
 Useful contrast prompts:
 
-1. “A moonlit garden remembering a storm”
-2. “Electric anxiety in a crowded city at midnight”
-3. “Quiet geometry floating in a field of warm light”
-4. “A vast heat haze over ancient red earth”
+1. “green blue gradient”
+2. “a heat haze in the desert”
+3. “geometric shapes in bright day”
+4. “midnight anxiety”
 
 ## Session receipts
 
-Every successful composition returns a sanitized receipt containing the resolved model, wall-clock latency, input/output/total tokens, and actual cost from `providerMetadata.gateway.cost`. Each prompt receipt shows its route or selected model plus total calls, elapsed Gateway time, and cost; the session header aggregates the same measurements across all Jev and comparison-model calls. Raw provider metadata never reaches the browser.
+Every successful composition returns a sanitized receipt containing the resolved model, wall-clock latency, input/output/total tokens, and actual cost from `providerMetadata.gateway.cost`. Each prompt receipt shows its route or selected model plus total calls, elapsed time, and cost; the session header aggregates the same measurements across Jev, full-ArtSpec, code-generation, and Sandbox stages. Raw provider metadata never reaches the browser.

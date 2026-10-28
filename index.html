@@ -9,63 +9,67 @@
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div class="product-brand"><span class="brand-mark" aria-hidden="true">▲</span><div><h1>Decision Canvas</h1><p class="eyebrow">Jev × AI Gateway</p></div></div>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div><h1>Decision Canvas</h1><p class="eyebrow">Jev × AI Gateway</p></div></div>
         <p class="page-context">Model comparison</p>
         <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · indigo → black · mysterious</span></p>
       </header>
 
       <section class="canvas-stage" aria-label="AI-directed generative artwork">
         <div id="canvas-root"></div>
+        <iframe id="sandbox-preview" class="sandbox-preview" title="Generated artwork preview" sandbox="allow-scripts" hidden></iframe>
         <aside class="model-trace" id="model-trace" aria-live="polite" aria-label="Art decision trace">
-          <div class="trace-header">
-            <div><p class="trace-label">Decision trace</p><p class="trace-source" data-trace-source>Default composition</p></div>
-            <p class="trace-meta" data-trace-meta>Fixed seeded renderer</p>
-          </div>
-          <div class="trace-capability"><span>Decision surface</span><span><strong data-trace-verdict>80 applied</strong><span data-trace-average>—</span></span></div>
-          <dl class="trace-decisions">
-            <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-            <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>INDIGO → BLACK</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-            <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-            <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-            <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-          </dl>
-          <details class="trace-code art-spec-details"><summary>View applied art spec</summary><pre><code data-art-spec></code></pre></details>
-          <button type="button" class="debugger-trigger" data-debugger-toggle aria-controls="decision-debugger" aria-expanded="false" disabled><span>Decision debugger</span><span data-debugger-trigger-meta>Run a prompt</span></button>
-        </aside>
-
-        <section class="decision-debugger" id="decision-debugger" aria-label="AI decision debugger" hidden>
-          <header class="debugger-header">
-            <div><p class="debugger-eyebrow">Decision debugger</p><h2 data-debugger-title>Routing trace</h2></div>
-            <div class="debugger-actions">
-              <div class="debugger-filters" aria-label="Decision filter">
-                <button type="button" data-debug-filter="exceptions" aria-pressed="true">Exceptions</button>
-                <button type="button" data-debug-filter="all" aria-pressed="false">All decisions</button>
-              </div>
-              <button type="button" class="debugger-close" data-debugger-close aria-label="Close decision debugger">Close</button>
+          <details class="trace-disclosure">
+            <summary class="trace-header">
+              <div><p class="trace-label">Decision trace</p><p class="trace-source" data-trace-source></p></div>
+              <div class="trace-header-meta"><p class="trace-meta" data-trace-meta></p><span class="trace-chevron" aria-hidden="true"></span></div>
+            </summary>
+            <div class="trace-body">
+              <div class="trace-summary"><span>Decision surface</span><span><strong data-trace-verdict>80 applied</strong><span data-trace-average>—</span></span></div>
+              <dl class="trace-decisions">
+                <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>INDIGO → BLACK</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+              </dl>
+              <details class="trace-code art-spec-details"><summary>View applied art spec</summary><pre><code data-art-spec></code></pre></details>
             </div>
-          </header>
-          <div class="debugger-summary" data-debugger-summary></div>
-          <div class="debugger-stages" data-debugger-stages></div>
-        </section>
+          </details>
+        </aside>
 
         <aside class="session-ledger" id="session-ledger" aria-live="polite" aria-label="AI session history">
           <div class="ledger-header"><div><p class="ledger-label">Session receipt</p><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p></div><button type="button" data-reset-session>Reset</button></div>
-          <p class="ledger-empty" data-ledger-empty>No AI calls yet</p><ol class="ledger-list" data-ledger-list></ol>
+          <p class="ledger-empty" data-ledger-empty>No AI Gateway calls yet</p><ol class="ledger-list" data-ledger-list></ol>
         </aside>
       </section>
 
       <section class="prompt-control" aria-labelledby="prompt-label">
-        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p><p class="prompt-hint">Jev · relevant decisions only</p></div>
+        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p></div>
         <div class="composition-workspace">
           <div class="composition-settings">
-            <div class="composition-mode" aria-label="Composition mode" role="group">
-              <button type="button" data-composition-mode="jev" aria-pressed="true"><span>01</span> Jev decisions</button>
-              <label class="model-picker" data-model-picker data-active="false"><span class="sr-only">Full ArtSpec model</span><select id="comparison-model" aria-label="Full ArtSpec model"></select></label>
+            <div class="composition-route-group">
+              <div class="composition-route-heading">
+                <p class="composition-route-label">Populate spec</p>
+                <button type="button" class="route-info" aria-label="What does Populate spec mean?" aria-describedby="populate-spec-tooltip">i</button>
+                <span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">A spec is the structured set of art controls used by the built-in renderer. Jev selects relevant fields; other models fill every field.</span>
+              </div>
+              <div class="composition-mode" aria-label="Built-in art controls" role="group">
+                <button type="button" data-composition-mode="jev" aria-pressed="true"><span>01</span> Jev (fastest)</button>
+                <label class="model-picker" data-model-picker data-active="false"><span class="sr-only">Model using built-in art controls</span><select id="comparison-model" aria-label="Model using built-in art controls"></select></label>
+              </div>
+            </div>
+            <div class="composition-route-group composition-route-group-code">
+              <div class="composition-route-heading">
+                <p class="composition-route-label">Custom code</p>
+                <button type="button" class="route-info" aria-label="What does Custom code mean?" aria-describedby="custom-code-tooltip">i</button>
+                <span class="route-tooltip" id="custom-code-tooltip" role="tooltip">The model writes custom JavaScript, which runs in a sandbox and renders in an iframe.</span>
+              </div>
+              <button type="button" class="code-route-button" data-composition-mode="code" aria-pressed="false">Code + Sandbox</button>
             </div>
           </div>
           <form id="prompt-form" novalidate>
             <label class="sr-only" for="prompt-input">Describe the artwork to compose</label>
-            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="A moonlit garden remembering a storm…" aria-describedby="prompt-message" />
+            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" value="green blue gradient" placeholder="Describe an artwork…" aria-describedby="prompt-message" />
             <button type="submit">Compose</button>
           </form>
         </div>
@@ -73,7 +77,7 @@
       </section>
 
       <nav class="mode-controls" aria-label="Example art prompts">
-        <p class="control-label">Try a prompt</p>
+        <p class="control-label">Prompt examples</p>
         <div class="mode-list" id="example-prompts">
           <button type="button" data-example-prompt="green blue gradient"><span>01</span> Green blue gradient</button>
           <button type="button" data-example-prompt="a heat haze in the desert"><span>02</span> Desert heat haze</button>

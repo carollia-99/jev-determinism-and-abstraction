@@ -312,7 +312,6 @@ export function mountGenerativeRenderer(container) {
       hotkeys: false,
       parent: container,
       resizeCanvas: true,
-      dimensions: [container.clientWidth, container.clientHeight],
       attributes: { alpha: false },
     },
   );

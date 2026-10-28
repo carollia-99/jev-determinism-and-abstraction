@@ -25,6 +25,21 @@ describe("composition client", () => {
     });
   });
 
+  it("selects the code and Sandbox route", async () => {
+    const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ mode: "code" }) }));
+    const result = await requestArtComposition(
+      "living stained glass",
+      { mode: "code", model: "anthropic/claude-haiku-4.5" },
+      fetchFn,
+    );
+    expect(result.mode).toBe("code");
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
+      prompt: "living stained glass",
+      mode: "code",
+      model: "anthropic/claude-haiku-4.5",
+    });
+  });
+
   it("preserves structured server errors", async () => {
     const fetchFn = async () => ({ ok: false, json: async () => ({ error: "No key", code: "MISSING_AI_GATEWAY_AUTH" }) });
     await expect(requestArtComposition("test", fetchFn)).rejects.toMatchObject({ code: "MISSING_AI_GATEWAY_AUTH" });

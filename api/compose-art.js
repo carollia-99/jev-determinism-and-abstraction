@@ -1,4 +1,4 @@
-import { createComposeResponse } from "../server/compose-with-jev.js";
+import { createComposeResponse } from "../server/compose-art.js";
 
 export default async function handler(request, response) {
   if (request.method !== "POST") {
