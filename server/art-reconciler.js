@@ -134,6 +134,7 @@ function choiceIsReliable(answer) {
 }
 
 const relevanceValue = (answers, key) => Number.isFinite(answers[key]?.score) ? answers[key].score : 0;
+export const ART_ROUTING_THRESHOLD = 1.5;
 
 export function thesisFromAnswers(answers, literalConstraints = {}) {
   const relevance = {
@@ -167,40 +168,59 @@ export function thesisFromAnswers(answers, literalConstraints = {}) {
   };
 }
 
-export function buildRelevantArtQuestions(thesis) {
+export function buildRelevantArtRouting(thesis) {
   const questions = buildArtQuestions();
-  delete questions.fieldTreatment;
-  const remove = (keys) => keys.forEach((key) => delete questions[key]);
+  const skipped = [];
+  const remove = (keys, reason, family = "structure") => keys.forEach((key) => {
+    if (!Object.hasOwn(questions, key)) return;
+    delete questions[key];
+    skipped.push({ id: key, reason, family });
+  });
+  remove(["fieldTreatment"], "Set directly from the Tier 1 field intent.", "fieldIntent");
   const layerKeys = Object.keys(questions).filter((key) => key.startsWith("layer"));
-  const removeLayerProperties = (properties) => remove(layerKeys.filter((key) => properties.some((property) => key.endsWith(`_${property}`))));
+  const removeLayerProperties = (properties, reason, family) =>
+    remove(layerKeys.filter((key) => properties.some((property) => key.endsWith(`_${property}`))), reason, family);
   const relevant = (key, fallback = true) => Number.isFinite(thesis.relevance?.[key])
-    ? thesis.relevance[key] >= 1.5
+    ? thesis.relevance[key] >= ART_ROUTING_THRESHOLD
     : fallback;
+  const belowThreshold = (family) => {
+    const score = Number.isFinite(thesis.relevance?.[family]) ? Number(thesis.relevance[family].toFixed(2)) : 0;
+    return `${decisionFamilyLabel(family)} scored ${score} / 3, below the ${ART_ROUTING_THRESHOLD} routing threshold.`;
+  };
   const hasMarks = thesis.fieldIntent === "MARKS" || thesis.fieldIntent === "GRADIENT_AND_MARKS";
 
   if (thesis.fieldIntent === "GRADIENT" || thesis.fieldIntent === "SOLID") {
-    remove(layerKeys);
-    remove(["paletteFamily", "paletteHarmony", "primaryColor", "secondaryColor", "accentColor", "lineCharacter", "shapeLanguage", "motion", "tempo", "rhythm", "turbulence", "edgeBehavior"]);
+    const structuralReason = `${thesis.fieldIntent} does not render mark layers.`;
+    remove(layerKeys, structuralReason, "fieldIntent");
+    remove(["paletteFamily", "paletteHarmony", "primaryColor", "secondaryColor", "accentColor", "lineCharacter", "shapeLanguage", "motion", "tempo", "rhythm", "turbulence", "edgeBehavior"], structuralReason, "fieldIntent");
   } else if (thesis.fieldIntent === "MARKS") {
-    remove(["gradient", "gradientStartColor", "gradientEndColor", "gradientDirection"]);
+    remove(["gradient", "gradientStartColor", "gradientEndColor", "gradientDirection"], "MARKS uses a flat field, so gradient controls are inactive.", "fieldIntent");
   }
-  if (!relevant("palette")) remove(["paletteFamily", "paletteHarmony", "primaryColor", "secondaryColor", "accentColor", "saturation"]);
-  if (!relevant("composition")) remove(["composition", "focalPoint"]);
-  if (!relevant("space")) remove(["negativeSpace", "depth", "edgeBehavior"]);
-  if (!relevant("motion", thesis.useMotion)) remove(["motion", "tempo", "rhythm"]);
-  if (!relevant("texture", thesis.useTexture)) remove(["texture"]);
-  if (!relevant("symmetry", thesis.useSymmetry)) remove(["symmetry"]);
-  if (!relevant("atmosphere")) remove(["contrast", "atmosphere"]);
-  if (!relevant("disorder")) remove(["turbulence"]);
+  if (!relevant("palette")) remove(["paletteFamily", "paletteHarmony", "primaryColor", "secondaryColor", "accentColor", "saturation"], belowThreshold("palette"), "palette");
+  if (!relevant("composition")) remove(["composition", "focalPoint"], belowThreshold("composition"), "composition");
+  if (!relevant("space")) remove(["negativeSpace", "depth", "edgeBehavior"], belowThreshold("space"), "space");
+  if (!relevant("motion", thesis.useMotion)) remove(["motion", "tempo", "rhythm"], belowThreshold("motion"), "motion");
+  if (!relevant("texture", thesis.useTexture)) remove(["texture"], belowThreshold("texture"), "texture");
+  if (!relevant("symmetry", thesis.useSymmetry)) remove(["symmetry"], belowThreshold("symmetry"), "symmetry");
+  if (!relevant("atmosphere")) remove(["contrast", "atmosphere"], belowThreshold("atmosphere"), "atmosphere");
+  if (!relevant("disorder")) remove(["turbulence"], belowThreshold("disorder"), "disorder");
 
   if (hasMarks) {
-    if (!relevant("marks")) removeLayerProperties(["primitive", "distribution", "density", "scale", "fillMode", "strokeWidth"]);
-    if (!relevant("palette")) removeLayerProperties(["colorRole"]);
-    if (!relevant("atmosphere")) removeLayerProperties(["opacity", "blendMode"]);
-    if (!relevant("texture") && !relevant("disorder")) removeLayerProperties(["noise"]);
-    if (!relevant("composition") && !relevant("disorder")) removeLayerProperties(["rotation", "repetition", "scaleVariation"]);
+    if (!relevant("marks")) removeLayerProperties(["primitive", "distribution", "density", "scale", "fillMode", "strokeWidth"], belowThreshold("marks"), "marks");
+    if (!relevant("palette")) removeLayerProperties(["colorRole"], belowThreshold("palette"), "palette");
+    if (!relevant("atmosphere")) removeLayerProperties(["opacity", "blendMode"], belowThreshold("atmosphere"), "atmosphere");
+    if (!relevant("texture") && !relevant("disorder")) removeLayerProperties(["noise"], `${belowThreshold("texture")} ${belowThreshold("disorder")}`, "texture+disorder");
+    if (!relevant("composition") && !relevant("disorder")) removeLayerProperties(["rotation", "repetition", "scaleVariation"], `${belowThreshold("composition")} ${belowThreshold("disorder")}`, "composition+disorder");
   }
-  return questions;
+  return { questions, skipped };
+}
+
+function decisionFamilyLabel(value) {
+  return String(value).replace(/\+/g, " and ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function buildRelevantArtQuestions(thesis) {
+  return buildRelevantArtRouting(thesis).questions;
 }
 
 export function extractExplicitColors(prompt) {
@@ -322,18 +342,85 @@ export function repairCompleteArtSpec({ prompt, generatedSpec, seed }) {
   return { spec, repairs };
 }
 
+function cloneSpec(spec) {
+  return JSON.parse(JSON.stringify(spec));
+}
+
+function flattenSpec(value, prefix = "", result = {}) {
+  if (Array.isArray(value) && prefix === "layers") {
+    value.forEach((entry, index) => flattenSpec(entry, `layers[${index}]`, result));
+  } else if (value && typeof value === "object" && !Array.isArray(value)) {
+    Object.entries(value).forEach(([key, entry]) => flattenSpec(entry, prefix ? `${prefix}.${key}` : key, result));
+  } else if (prefix) {
+    result[prefix] = value;
+  }
+  return result;
+}
+
+function answerIdForPath(path) {
+  const layer = path.match(/^layers\[(\d+)]\.(.+)$/);
+  return layer ? `layer${Number(layer[1]) + 1}_${layer[2]}` : path;
+}
+
+function initialProvenance(spec, answers) {
+  return Object.fromEntries(Object.entries(flattenSpec(spec)).map(([path, value]) => {
+    const answerId = answerIdForPath(path);
+    const selectedByJev = Boolean(answers[answerId]);
+    return [path, {
+      path,
+      value,
+      source: selectedByJev ? "jev-tier2" : path === "seed" ? "prompt-seed" : "default",
+      reason: selectedByJev
+        ? `Selected by Jev as ${answerId}.`
+        : path === "seed"
+          ? "Deterministically derived from the prompt."
+          : `The ${answerId} question was skipped, so the renderer default was used.`,
+    }];
+  }));
+}
+
+function recordChanges(before, after, provenance, source, reason) {
+  const previous = flattenSpec(before);
+  const next = flattenSpec(after);
+  for (const [path, value] of Object.entries(next)) {
+    if (JSON.stringify(previous[path]) === JSON.stringify(value)) continue;
+    provenance[path] = { path, value, source, reason };
+  }
+}
+
+function finalProvenance(spec, provenance) {
+  return Object.entries(flattenSpec(spec)).map(([path, value]) => ({
+    path,
+    value,
+    source: provenance[path]?.source ?? "default",
+    reason: provenance[path]?.reason ?? "The renderer default was used.",
+  }));
+}
+
 export function reconcileArtSpec({ prompt, thesis, answers, seed }) {
   const spec = artSpecFromAnswers(answers, seed);
   const omitted = [];
   const repairs = [];
+  const provenance = initialProvenance(spec, answers);
   spec.fieldTreatment = thesis.fieldIntent;
-  if (!thesis.useMotion) spec.motion = "STILL";
-  if (!thesis.useTexture) spec.texture = "CLEAN";
-  if (!thesis.useSymmetry) spec.symmetry = "NONE";
+  provenance.fieldTreatment = { path: "fieldTreatment", value: spec.fieldTreatment, source: "tier1", reason: `Mapped directly from Tier 1 fieldIntent ${thesis.fieldIntent}.` };
+  if (!thesis.useMotion) {
+    spec.motion = "STILL";
+    provenance.motion = { path: "motion", value: "STILL", source: "relevance-fallback", reason: "Motion relevance was below the routing threshold." };
+  }
+  if (!thesis.useTexture) {
+    spec.texture = "CLEAN";
+    provenance.texture = { path: "texture", value: "CLEAN", source: "relevance-fallback", reason: "Texture relevance was below the routing threshold." };
+  }
+  if (!thesis.useSymmetry) {
+    spec.symmetry = "NONE";
+    provenance.symmetry = { path: "symmetry", value: "NONE", source: "relevance-fallback", reason: "Symmetry relevance was below the routing threshold." };
+  }
 
   for (const [key, fallback] of Object.entries(OPTIONAL_DEFAULTS)) {
     if (answers[key] && !choiceIsReliable(answers[key])) {
       spec[key] = fallback;
+      provenance[key] = { path: key, value: fallback, source: "confidence-fallback", reason: `${key} was answered with insufficient confidence, so its safe fallback was used.` };
       omitted.push(key);
     }
   }
@@ -344,6 +431,8 @@ export function reconcileArtSpec({ prompt, thesis, answers, seed }) {
       const answerKey = `layer${index + 1}_${key}`;
       if (answers[answerKey] && !choiceIsReliable(answers[answerKey])) {
         next[key] = fallback;
+        const path = `layers[${index}].${key}`;
+        provenance[path] = { path, value: fallback, source: "confidence-fallback", reason: `${answerKey} was answered with insufficient confidence, so its safe fallback was used.` };
         omitted.push(answerKey);
       }
     }
@@ -352,11 +441,24 @@ export function reconcileArtSpec({ prompt, thesis, answers, seed }) {
 
   const namedColors = extractExplicitColors(prompt);
   spec.requestedColors = namedColors;
+  provenance.requestedColors = { path: "requestedColors", value: namedColors, source: "literal-constraint", reason: namedColors.length ? "Extracted literal color names from the prompt." : "No literal color names were detected." };
+  const beforeAnchors = cloneSpec(spec);
+  const anchorRepairStart = repairs.length;
   applySemanticAnchors(spec, thesis, namedColors, repairs);
+  recordChanges(beforeAnchors, spec, provenance, "semantic-anchor", repairs.slice(anchorRepairStart).join("; ") || "Tier 1 semantic anchors adjusted the renderer spec.");
   if (spec.fieldTreatment === "MARKS" || spec.fieldTreatment === "GRADIENT_AND_MARKS") {
+    const beforeLiteralColors = cloneSpec(spec);
+    const colorRepairStart = repairs.length;
     ensureRequestedMarkColors(spec, answers, namedColors, repairs);
+    recordChanges(beforeLiteralColors, spec, provenance, "literal-constraint", repairs.slice(colorRepairStart).join("; ") || "Explicit prompt colors were preserved.");
+    ["primaryColor", "secondaryColor", "accentColor"].slice(0, namedColors.length).forEach((path, index) => {
+      provenance[path] = { path, value: spec[path], source: "literal-constraint", reason: `Preserved the explicitly requested ${namedColors[index]} color.` };
+    });
   }
+  const beforeCompatibility = cloneSpec(spec);
+  const compatibilityRepairStart = repairs.length;
   applyCompatibilityRepairs(spec, namedColors, repairs);
+  recordChanges(beforeCompatibility, spec, provenance, "compatibility-repair", repairs.slice(compatibilityRepairStart).join("; ") || "A renderer compatibility rule adjusted this value.");
 
-  return { spec, omitted, repairs };
+  return { spec, omitted, repairs, provenance: finalProvenance(spec, provenance) };
 }

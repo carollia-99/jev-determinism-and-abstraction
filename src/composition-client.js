@@ -45,6 +45,7 @@ export async function requestArtComposition(prompt, modeOrOptions = "jev", reque
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
   const body = { prompt, mode };
   if (mode === "model" && options.model) body.model = options.model;
+  if (mode === "image" && options.model) body.model = options.model;
   if (mode === "jev" && options.live === true) body.live = true;
   const response = await fetchFn("/api/compose-art", {
     method: "POST",

@@ -38,6 +38,14 @@ describe("Jev composition routing", () => {
       confidence: 0.82,
       reason: "The prompt depends on viewer interaction, which requires custom JavaScript.",
     });
+    expect(result.decisions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "compositionRoute",
+        selected: "CUSTOM_CODE",
+        confidence: 0.82,
+        probabilities: { CUSTOM_CODE: 0.82, POPULATE_SPEC: 0.18000000000000005 },
+      }),
+    ]));
     expect(result.receipt).toMatchObject({ stage: "composition-route", tokens: { total: 24 }, costUsd: 0.00001 });
   });
 

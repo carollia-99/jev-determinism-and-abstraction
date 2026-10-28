@@ -3,6 +3,7 @@ import { requestArtComposition } from "./composition-client.js";
 import { clearSessionHistory, getRequestTotals, getSessionHistory, getSessionTotals, recordSessionRequest, subscribeToSessionHistory } from "./session-history.js";
 import { ART_DECISION_COUNT } from "../shared/art-grammar.js";
 import { COMPARISON_MODELS, comparisonModelLabel } from "../shared/comparison-models.js";
+import { IMAGE_MODELS, imageModelLabel } from "../shared/image-models.js";
 
 const DIMENSIONS = ["composition", "palette", "marks", "space", "motion"];
 const MAX_DECISION_COUNT = ART_DECISION_COUNT + 16;
@@ -39,13 +40,96 @@ function defaultHighlights(spec) {
   };
 }
 
+const traceValue = (value) => Array.isArray(value)
+  ? value.length ? value.join(", ") : "none"
+  : value && typeof value === "object" ? JSON.stringify(value) : String(value ?? "—");
+
+function createTraceList(items, className = "trace-deep-list") {
+  const list = document.createElement("ul");
+  list.className = className;
+  list.replaceChildren(...items.map((item) => {
+    const row = document.createElement("li");
+    if (typeof item === "string") row.textContent = item;
+    else {
+      const label = document.createElement("span");
+      const value = document.createElement("span");
+      label.textContent = item.label;
+      value.textContent = item.value;
+      if (item.title) value.title = item.title;
+      row.append(label, value);
+    }
+    return row;
+  }));
+  return list;
+}
+
+function createDecisionDisclosure(decision) {
+  const disclosure = document.createElement("details");
+  disclosure.className = "trace-deep-decision";
+  const summary = document.createElement("summary");
+  const name = document.createElement("span");
+  const outcome = document.createElement("span");
+  name.textContent = decisionLabel(decision.id);
+  outcome.textContent = decisionOutcome(decision);
+  summary.append(name, outcome);
+  const body = document.createElement("div");
+  body.className = "trace-deep-decision-body";
+  if (decision.instructions) {
+    const instructions = document.createElement("p");
+    instructions.textContent = decision.instructions;
+    body.append(instructions);
+  }
+  const probabilities = Object.entries(decision.probabilities ?? {});
+  if (probabilities.length) {
+    body.append(createTraceList(probabilities
+      .sort((a, b) => b[1] - a[1])
+      .map(([key, probability], index) => {
+        const criterion = Array.isArray(decision.criteria)
+          ? decision.criteria[Number(key)]
+          : decision.criteria?.[key];
+        const selected = decision.type === "score" ? index === 0 : String(decision.selected) === key;
+        return {
+          label: `${selected ? "→ " : ""}${decisionLabel(key)}`,
+          value: `${Math.round(probability * 100)}%`,
+          title: criterion,
+        };
+      }), "trace-probabilities"));
+  }
+  disclosure.append(summary, body);
+  return disclosure;
+}
+
+function createTraceStep(number, title, summaryText, content = [], { open = false } = {}) {
+  const item = document.createElement("li");
+  item.className = "trace-step";
+  const disclosure = document.createElement("details");
+  disclosure.open = open;
+  const summary = document.createElement("summary");
+  const index = document.createElement("span");
+  const heading = document.createElement("span");
+  const result = document.createElement("span");
+  index.textContent = String(number).padStart(2, "0");
+  heading.textContent = title;
+  result.textContent = summaryText;
+  summary.append(index, heading, result);
+  const body = document.createElement("div");
+  body.className = "trace-step-body";
+  body.append(...content.filter(Boolean));
+  disclosure.append(summary, body);
+  item.append(disclosure);
+  return item;
+}
+
 export function mountComposer({ promptForm, promptInput, promptMessage, status, trace, sessionLedger, examples }) {
   const submitButton = promptForm.querySelector("button[type='submit']");
   const compositionModeButtons = [...document.querySelectorAll("[data-composition-mode]")];
   const modelPicker = document.querySelector("[data-model-picker]");
   const comparisonModel = document.querySelector("#comparison-model");
+  const imageModelPicker = document.querySelector("[data-image-model-picker]");
+  const imageModel = document.querySelector("#image-model");
   const canvasRoot = document.querySelector("#canvas-root");
   const sandboxPreview = document.querySelector("#sandbox-preview");
+  const imagePreview = document.querySelector("#image-preview");
   const traceSource = trace.querySelector("[data-trace-source]");
   const traceMeta = trace.querySelector("[data-trace-meta]");
   const traceVerdict = trace.querySelector("[data-trace-verdict]");
@@ -59,6 +143,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   const traceOmittedCount = trace.querySelector("[data-trace-omitted-count]");
   const traceAppliedList = trace.querySelector("[data-trace-applied-list]");
   const traceOmittedList = trace.querySelector("[data-trace-omitted-list]");
+  const traceDeep = trace.querySelector("[data-trace-deep]");
+  const traceStepCount = trace.querySelector("[data-trace-step-count]");
+  const traceTimeline = trace.querySelector("[data-trace-timeline]");
   const traceRows = new Map([...trace.querySelectorAll("[data-trace-dimension]")].map((row) => [row.dataset.traceDimension, row]));
   const ledgerTotal = sessionLedger.querySelector("[data-ledger-total]");
   const ledgerEmpty = sessionLedger.querySelector("[data-ledger-empty]");
@@ -66,6 +153,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   const resetButton = sessionLedger.querySelector("[data-reset-session]");
   let compositionMode = "jev";
   let lastSandboxPreview = "";
+  let lastImagePreview = "";
   let sandboxCountdownTimer = null;
   let liveRequestRunning = false;
   let queuedLivePrompt = "";
@@ -81,6 +169,13 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     return option;
   }));
   comparisonModel.value = "jev";
+
+  imageModel.replaceChildren(...IMAGE_MODELS.map((model) => {
+    const option = document.createElement("option");
+    option.value = model.id;
+    option.textContent = model.label;
+    return option;
+  }));
 
   function renderSpec(spec) {
     status.textContent = `composition: ${String(spec.composition).toLowerCase()} · ${activePalette(spec).toLowerCase()} · ${spec.atmosphere.toLowerCase()}`;
@@ -129,6 +224,179 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     traceDecisionLists.hidden = false;
   }
 
+  function renderDeepTrace(decisionTrace, autoRoute) {
+    if (!decisionTrace?.tier1?.decisions || !decisionTrace?.tier2?.decisions) {
+      traceDeep.hidden = true;
+      traceDeep.open = false;
+      traceTimeline.replaceChildren();
+      return;
+    }
+
+    const steps = [];
+    const gate = decisionTrace.gate ?? null;
+    if (gate?.decisions?.length) {
+      const gateSummary = gate.route === "CUSTOM_CODE" ? "Custom code" : "Populate spec";
+      const gateIntro = document.createElement("p");
+      gateIntro.className = "trace-step-note";
+      gateIntro.textContent = `${gate.reason} Custom code requires at least ${Math.round((gate.threshold ?? 0.65) * 100)}% confidence.`;
+      steps.push(createTraceStep(1, "Route check", `${gateSummary} · ${Math.round((gate.confidence ?? 0) * 100)}%`, [
+        gateIntro,
+        ...gate.decisions.map(createDecisionDisclosure),
+      ], { open: true }));
+    } else {
+      const note = document.createElement("p");
+      note.className = "trace-step-note";
+      note.textContent = autoRoute
+        ? autoRoute.reason
+        : "Live Jev previews skip the custom-code route check and populate the renderer directly.";
+      steps.push(createTraceStep(1, "Route check", gate ? decisionLabel(gate.route) : "Skipped for live preview", [note]));
+    }
+
+    const colors = decisionTrace.constraints?.colors ?? [];
+    steps.push(createTraceStep(2, "Literal constraints", colors.length ? colors.join(" · ") : "None detected", [
+      createTraceList([{ label: "Prompt colors", value: colors.length ? colors.join(", ") : "None" }]),
+    ]));
+
+    steps.push(createTraceStep(3, "Visual thesis", `${decisionTrace.tier1.decisions.length} decisions`,
+      decisionTrace.tier1.decisions.map(createDecisionDisclosure)));
+
+    const refinement = decisionTrace.tier1.refinement;
+    if (refinement) {
+      const accepted = new Set(refinement.acceptedQuestionIds ?? []);
+      const comparisons = (refinement.decisions ?? []).map((decision) => {
+        const initial = refinement.initialDecisions?.find(({ id }) => id === decision.id);
+        const row = document.createElement("div");
+        row.className = "trace-refinement";
+        const heading = document.createElement("p");
+        heading.textContent = `${decisionLabel(decision.id)} · ${accepted.has(decision.id) ? "recheck accepted" : "original retained"}`;
+        row.append(heading, createTraceList([
+          { label: "Initial", value: initial ? decisionOutcome(initial) : "—" },
+          { label: "Recheck", value: decisionOutcome(decision) },
+        ]));
+        return row;
+      });
+      steps.push(createTraceStep(4, "Confidence refinement", `${accepted.size} improved`, comparisons));
+    } else {
+      const note = document.createElement("p");
+      note.className = "trace-step-note";
+      note.textContent = "No core thesis choice fell below the 55% confidence threshold.";
+      steps.push(createTraceStep(4, "Confidence refinement", "Not needed", [note]));
+    }
+
+    const skippedByFamily = new Map();
+    for (const skipped of decisionTrace.routing?.skippedQuestions ?? []) {
+      const items = skippedByFamily.get(skipped.family) ?? [];
+      items.push(skipped);
+      skippedByFamily.set(skipped.family, items);
+    }
+    const skippedReasonContent = (entries) => {
+      const grouped = new Map();
+      for (const entry of entries) {
+        const ids = grouped.get(entry.reason) ?? [];
+        ids.push(entry.id);
+        grouped.set(entry.reason, ids);
+      }
+      return [...grouped.entries()].flatMap(([reason, ids]) => {
+        const note = document.createElement("p");
+        note.className = "trace-step-note";
+        note.textContent = reason;
+        return [note, createTraceList([{ label: `${ids.length} not asked`, value: ids.map(decisionLabel).join(", ") }])];
+      });
+    };
+    const familyRows = (decisionTrace.routing?.families ?? []).map((family) => {
+      const disclosure = document.createElement("details");
+      disclosure.className = "trace-family";
+      const summary = document.createElement("summary");
+      const label = document.createElement("span");
+      const result = document.createElement("span");
+      label.textContent = decisionLabel(family.family);
+      result.textContent = `${Number(family.score.toFixed(2))} / 3 · ${family.routed ? "routed" : "skipped"}`;
+      summary.append(label, result);
+      const skipped = skippedByFamily.get(family.family) ?? [];
+      const body = document.createElement("div");
+      body.className = "trace-family-body";
+      body.append(...(skipped.length
+        ? skippedReasonContent(skipped)
+        : [createTraceList([{ label: "Renderer questions", value: family.routed ? "Included" : "No direct fields remained" }])]));
+      disclosure.append(summary, body);
+      return disclosure;
+    });
+    const structuralSkips = [...skippedByFamily.entries()]
+      .filter(([family]) => !decisionTrace.routing.families?.some((entry) => entry.family === family))
+      .flatMap(([, entries]) => entries);
+    if (structuralSkips.length) {
+      const structural = document.createElement("details");
+      structural.className = "trace-family";
+      const summary = document.createElement("summary");
+      const label = document.createElement("span");
+      const count = document.createElement("span");
+      label.textContent = "Structural route";
+      count.textContent = `${structuralSkips.length} not asked`;
+      summary.append(label, count);
+      const body = document.createElement("div");
+      body.className = "trace-family-body";
+      body.append(...skippedReasonContent(structuralSkips));
+      structural.append(summary, body);
+      familyRows.unshift(structural);
+    }
+    steps.push(createTraceStep(5, "Characteristic routing", `${decisionTrace.routing?.askedQuestionIds?.length ?? 0} asked · ${decisionTrace.routing?.skippedQuestionIds?.length ?? 0} skipped`, familyRows));
+
+    const decisionGroups = new Map([["Global", []], ["Foundation layer", []], ["Structure layer", []], ["Accent layer", []], ["Detail layer", []]]);
+    for (const decision of decisionTrace.tier2.decisions) {
+      const match = decision.id.match(/^layer([1-4])_/);
+      const group = match ? [...decisionGroups.keys()][Number(match[1])] : "Global";
+      decisionGroups.get(group).push(decision);
+    }
+    const rendererGroups = [...decisionGroups.entries()].filter(([, decisions]) => decisions.length).map(([label, decisions]) => {
+      const group = document.createElement("details");
+      group.className = "trace-decision-group";
+      const summary = document.createElement("summary");
+      const name = document.createElement("span");
+      const count = document.createElement("span");
+      name.textContent = label;
+      count.textContent = `${decisions.length} decisions`;
+      summary.append(name, count);
+      const body = document.createElement("div");
+      body.append(...decisions.map(createDecisionDisclosure));
+      group.append(summary, body);
+      return group;
+    });
+    steps.push(createTraceStep(6, "Renderer decisions", `${decisionTrace.tier2.decisions.length} answered`, rendererGroups));
+
+    const compile = decisionTrace.compile ?? {};
+    const compileItems = [
+      ...(compile.overrides ?? []).map((value) => ({ label: "Override", value })),
+      ...(compile.omittedQuestionIds ?? []).map((value) => ({ label: decisionLabel(value), value: "Safe fallback used" })),
+    ];
+    steps.push(createTraceStep(7, "Compilation", `${compile.overrides?.length ?? 0} transformations`, [
+      createTraceList(compileItems.length ? compileItems : [{ label: "Result", value: "No overrides or repairs" }]),
+    ]));
+
+    const provenance = compile.provenance ?? [];
+    const provenanceList = document.createElement("div");
+    provenanceList.className = "trace-provenance";
+    provenanceList.replaceChildren(...provenance.map((entry) => {
+      const row = document.createElement("details");
+      const summary = document.createElement("summary");
+      const path = document.createElement("code");
+      const value = document.createElement("span");
+      const source = document.createElement("span");
+      const reason = document.createElement("p");
+      path.textContent = entry.path;
+      value.textContent = traceValue(entry.value);
+      source.textContent = decisionLabel(entry.source);
+      reason.textContent = entry.reason;
+      summary.append(path, value, source);
+      row.append(summary, reason);
+      return row;
+    }));
+    steps.push(createTraceStep(8, "Final renderer spec", `${provenance.length} values with provenance`, [provenanceList]));
+
+    traceTimeline.replaceChildren(...steps);
+    traceStepCount.textContent = `${steps.length} steps`;
+    traceDeep.hidden = false;
+  }
+
   function renderTrace({ source = "", model = "", latencyMs, appliedDecisionCount = ART_DECISION_COUNT, skippedDecisionCount = 0, omittedCount = 0, averageConfidence = null, highlights = defaultHighlights(getArtSpec()), decisionTrace = null, autoRoute = null } = {}) {
     const isModelComposition = source !== "Jev" && Boolean(model);
     trace.dataset.status = "complete";
@@ -155,6 +423,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         ? "Questions Jev skipped because they were irrelevant to the prompt or too uncertain to apply."
         : "Average confidence across the applied Jev decisions.";
     renderDecisionLists(isModelComposition ? null : decisionTrace);
+    renderDeepTrace(isModelComposition ? null : decisionTrace, autoRoute);
     for (const dimension of DIMENSIONS) {
       const row = traceRows.get(dimension);
       const decision = highlights[dimension];
@@ -171,21 +440,28 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
 
   function renderPending(mode) {
     traceDecisionLists.hidden = true;
+    traceDeep.hidden = true;
+    traceDeep.open = false;
+    traceTimeline.replaceChildren();
     traceRouteReason.hidden = true;
     trace.dataset.status = "pending";
-    trace.dataset.source = mode === "model" ? "model-art" : mode === "code" ? "sandbox-code" : "jev-art";
+    trace.dataset.source = mode === "model" ? "model-art" : mode === "code" ? "sandbox-code" : mode === "image" ? "image-generation" : "jev-art";
     traceSource.textContent = mode === "model"
       ? `${comparisonModelLabel(comparisonModel.value)} is composing`
       : mode === "code"
         ? "Building isolated artwork"
+        : mode === "image"
+          ? `${imageModelLabel(imageModel.value)} is generating`
         : "Jev is checking renderer fit";
     traceMeta.textContent = mode === "model"
       ? `${ART_DECISION_COUNT} fields → one structured object`
       : mode === "code"
         ? "Model → JavaScript → Vercel Sandbox"
+        : mode === "image"
+          ? "Prompt → image model → pixels"
         : `Route check → visual thesis → up to ${MAX_DECISION_COUNT} typed decisions`;
     traceMeta.title = "The composition pipeline currently being evaluated.";
-    traceVerdict.textContent = mode === "model" ? "Generating…" : mode === "code" ? "Generating…" : "Thesis…";
+    traceVerdict.textContent = mode === "jev" ? "Thesis…" : "Generating…";
     traceVerdict.title = "Composition is still in progress.";
     traceAverage.textContent = "—";
     traceAverage.title = "Routing detail will appear when composition completes.";
@@ -197,7 +473,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       setCompositionMode("code", { preserveCanvas: true });
     }
     trace.dataset.status = "pending";
-    trace.dataset.source = progress.stage?.startsWith("sandbox") || ["code-generation", "syntax-check", "runtime-check", "preview-start", "preview-ready"].includes(progress.stage)
+    trace.dataset.source = progress.stage === "image-generation"
+      ? "image-generation"
+      : progress.stage?.startsWith("sandbox") || ["code-generation", "syntax-check", "runtime-check", "preview-start", "preview-ready"].includes(progress.stage)
       ? "sandbox-code"
       : "jev-art";
     traceSource.textContent = progress.label ?? "Composing";
@@ -219,6 +497,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
 
   function renderCodeTrace(result) {
     traceDecisionLists.hidden = true;
+    traceDeep.hidden = true;
+    traceDeep.open = false;
+    traceTimeline.replaceChildren();
     trace.dataset.status = "complete";
     trace.dataset.source = "sandbox-code";
     traceSummaryLabel.textContent = "Execution path";
@@ -233,6 +514,26 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     traceRouteReason.hidden = !result.autoRoute?.reason;
     traceRouteReason.textContent = result.autoRoute?.reason ? `Route: ${result.autoRoute.reason}` : "";
     artSpecCode.textContent = result.code;
+  }
+
+  function renderImageTrace(result) {
+    traceDecisionLists.hidden = true;
+    traceDeep.hidden = true;
+    traceDeep.open = false;
+    traceTimeline.replaceChildren();
+    trace.dataset.status = "complete";
+    trace.dataset.source = "image-generation";
+    traceSummaryLabel.textContent = "Generation path";
+    traceSource.textContent = "Image generation";
+    traceMeta.textContent = `${imageModelLabel(result.model)} · ${result.latencyMs} ms`;
+    traceMeta.title = "Image model and total generation latency.";
+    traceVerdict.textContent = "Image ready";
+    traceVerdict.title = "The selected image model generated pixels directly from the prompt.";
+    traceAverage.textContent = `${result.trace?.imagesGenerated ?? 1} image`;
+    traceAverage.title = "Number of images generated in this request.";
+    traceRouteReason.hidden = false;
+    traceRouteReason.textContent = "This path bypasses the renderer spec and custom JavaScript.";
+    artSpecCode.textContent = "";
   }
 
   function renderHistory(history) {
@@ -259,6 +560,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       const outcome = document.createElement("strong");
       outcome.textContent = entry.source === "sandbox-code"
         ? entry.autoRoute ? "Jev → Custom code + Sandbox" : "Custom code + Sandbox"
+        : entry.source === "image-generation"
+          ? imageModelLabel(entry.model)
         : entry.source === "model-art" || entry.source === "model"
           ? comparisonModelLabel(entry.model)
           : "Jev";
@@ -278,6 +581,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         const stage = document.createElement("span");
         stage.textContent = step.stage === "composition-route"
           ? "Jev · route check"
+          : step.stage === "image-generation"
+          ? `${imageModelLabel(step.model)} · image`
           : step.stage === "model-code"
           ? `${comparisonModelLabel(step.model)} · JavaScript`
           : step.stage === "thesis"
@@ -301,6 +606,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     submitButton.disabled = pending;
     compositionModeButtons.forEach((button) => { button.disabled = pending; });
     comparisonModel.disabled = pending;
+    imageModel.disabled = pending;
     submitButton.textContent = pending ? live ? "Updating…" : "Composing…" : "Compose";
   }
 
@@ -388,7 +694,18 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       return;
     }
     promptInput.value = entry.prompt;
-    if (result.mode === "code") {
+    if (result.mode === "image") {
+      clearSandboxCountdown();
+      lastImagePreview = result.image.dataUrl;
+      setCompositionMode("image", { preserveCanvas: true });
+      imagePreview.src = result.image.dataUrl;
+      imagePreview.hidden = false;
+      sandboxPreview.hidden = true;
+      canvasRoot.hidden = true;
+      status.textContent = `${imageModelLabel(result.model)} · restored generated image`;
+      renderImageTrace(result);
+      promptMessage.textContent = "Restored this session’s generated image.";
+    } else if (result.mode === "code") {
       if (!Number.isFinite(result.expiresAt) || result.expiresAt <= Date.now()) {
         promptMessage.textContent = "This Sandbox preview has expired. Compose the prompt again to recreate it.";
         promptMessage.title = "Sandbox previews are temporary and cannot be reopened after expiration.";
@@ -400,6 +717,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       setCompositionMode("code", { preserveCanvas: true });
       sandboxPreview.src = result.previewUrl;
       sandboxPreview.hidden = false;
+      imagePreview.hidden = true;
       canvasRoot.hidden = true;
       status.textContent = `${result.title} · restored sandbox preview`;
       renderCodeTrace(result);
@@ -410,6 +728,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       setCompositionMode(result.mode === "model" ? "model" : "jev", { preserveCanvas: true });
       updateArtSpec(result.spec);
       sandboxPreview.hidden = true;
+      imagePreview.hidden = true;
       canvasRoot.hidden = false;
       const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
       renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute });
@@ -434,12 +753,16 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     }
     compositionMode = mode;
     compositionModeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.compositionMode === mode)));
-    modelPicker.dataset.active = String(mode !== "code");
+    modelPicker.dataset.active = String(mode === "jev" || mode === "model");
+    imageModelPicker.dataset.active = String(mode === "image");
     if (preserveCanvas) return;
     const showSandbox = mode === "code" && Boolean(lastSandboxPreview);
+    const showImage = mode === "image" && Boolean(lastImagePreview);
     sandboxPreview.hidden = !showSandbox;
-    canvasRoot.hidden = showSandbox;
-    if (!showSandbox) renderSpec(getArtSpec());
+    imagePreview.hidden = !showImage;
+    if (showImage) imagePreview.src = lastImagePreview;
+    canvasRoot.hidden = showSandbox || showImage;
+    if (!showSandbox && !showImage) renderSpec(getArtSpec());
   }
 
   async function compose(prompt, { live = false } = {}) {
@@ -451,6 +774,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       ? "The comparison model is generating all 80 renderer decisions in one structured response…"
       : requestedMode === "code"
         ? "Writing custom Javascript with the canvas-sketch framework, then using Vercel Sandbox to validate and run..."
+        : requestedMode === "image"
+          ? `${imageModelLabel(imageModel.value)} is generating an image directly from your prompt…`
         : "Jev is checking whether the fixed renderer can express this prompt…";
     promptMessage.dataset.tone = "pending";
     promptMessage.removeAttribute("title");
@@ -458,23 +783,34 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     try {
       const result = await requestArtComposition(prompt, {
         mode: requestedMode,
-        model: requestedMode === "model" ? comparisonModel.value : undefined,
+        model: requestedMode === "model" ? comparisonModel.value : requestedMode === "image" ? imageModel.value : undefined,
         live,
         onProgress: renderProgress,
       });
       if (live && compositionMode !== "jev") return;
-      if (result.mode === "code") {
+      if (result.mode === "image") {
+        lastImagePreview = result.image.dataUrl;
+        imagePreview.src = result.image.dataUrl;
+        imagePreview.hidden = false;
+        sandboxPreview.hidden = true;
+        canvasRoot.hidden = true;
+        status.textContent = `${imageModelLabel(result.model)} · generated image`;
+      } else if (result.mode === "code") {
         lastSandboxPreview = result.previewUrl;
         sandboxPreview.src = result.previewUrl;
         sandboxPreview.hidden = false;
+        imagePreview.hidden = true;
         canvasRoot.hidden = true;
         status.textContent = `${result.title} · isolated sandbox preview`;
       } else {
         applyArtSpec(result.spec, { morph: live });
         sandboxPreview.hidden = true;
+        imagePreview.hidden = true;
         canvasRoot.hidden = false;
       }
-      if (result.mode === "code") {
+      if (result.mode === "image") {
+        renderImageTrace(result);
+      } else if (result.mode === "code") {
         renderCodeTrace(result);
       } else {
         const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
@@ -482,7 +818,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       }
       recordSessionRequest({
         prompt,
-        outcome: result.mode === "code" ? "preview live" : `${result.appliedDecisionCount} applied`,
+        outcome: result.mode === "code" ? "preview live" : result.mode === "image" ? "image generated" : `${result.appliedDecisionCount} applied`,
         steps: result.receipts.filter((receipt) => receipt.stage !== "sandbox-execution"),
         source: result.source,
         model: result.model,
@@ -491,6 +827,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       });
       if (result.mode === "code") {
         startSandboxCountdown(result);
+      } else if (result.mode === "image") {
+        promptMessage.textContent = `Generated with ${imageModelLabel(result.model)} in ${formatDuration(result.latencyMs)}.`;
+        promptMessage.removeAttribute("title");
       } else if (live) {
         promptMessage.textContent = `Jev updated the canvas in ${formatDuration(result.latencyMs)}.`;
         promptMessage.title = "Live Jev requests populate the fixed renderer directly and do not reroute to custom code.";
@@ -527,7 +866,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
           ? "Link this project to Vercel and pull its environment to enable Sandbox previews."
           : codeFailure
             ? codeFailureMessage
-            : `${requestedMode === "model" ? "The comparison model" : "Jev"} could not compose this piece: ${error.detail ?? error.message}`;
+            : `${requestedMode === "model" ? "The comparison model" : requestedMode === "image" ? "The image model" : "Jev"} could not compose this piece: ${error.detail ?? error.message}`;
       promptMessage.dataset.tone = "error";
       if (codeFailure) promptMessage.title = "The previous artwork remains on the canvas. You can retry the same prompt.";
       else promptMessage.removeAttribute("title");
@@ -583,13 +922,23 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     }
   }
 
+  function onImageModelActivate() {
+    if (!imageModel.disabled) {
+      queuedLivePrompt = "";
+      setCompositionMode("image");
+    }
+  }
+
   function onReset() {
     clearSandboxCountdown();
     clearSessionHistory();
     const spec = resetArtSpec();
     lastSandboxPreview = "";
+    lastImagePreview = "";
     sandboxPreview.removeAttribute("src");
     sandboxPreview.hidden = true;
+    imagePreview.removeAttribute("src");
+    imagePreview.hidden = true;
     canvasRoot.hidden = false;
     renderTrace({ highlights: defaultHighlights(spec) });
     promptMessage.textContent = "Session receipt cleared and the default composition restored.";
@@ -602,6 +951,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   compositionModeButtons.forEach((button) => button.addEventListener("click", onCompositionMode));
   comparisonModel.addEventListener("focus", onComparisonModelActivate);
   comparisonModel.addEventListener("change", onComparisonModelActivate);
+  imageModel.addEventListener("focus", onImageModelActivate);
+  imageModel.addEventListener("change", onImageModelActivate);
   examples.addEventListener("click", onExample);
   resetButton.addEventListener("click", onReset);
   ledgerList.addEventListener("click", onLedgerActivate);
@@ -620,6 +971,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     compositionModeButtons.forEach((button) => button.removeEventListener("click", onCompositionMode));
     comparisonModel.removeEventListener("focus", onComparisonModelActivate);
     comparisonModel.removeEventListener("change", onComparisonModelActivate);
+    imageModel.removeEventListener("focus", onImageModelActivate);
+    imageModel.removeEventListener("change", onImageModelActivate);
     examples.removeEventListener("click", onExample);
     resetButton.removeEventListener("click", onReset);
     ledgerList.removeEventListener("click", onLedgerActivate);

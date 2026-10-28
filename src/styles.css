@@ -1132,7 +1132,7 @@ body {
 
 .how-routes {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 24px;
 }
 
@@ -1153,6 +1153,12 @@ body {
 .how-routes strong,
 .how-routes span {
   display: block;
+}
+
+.how-routes a {
+  color: #aaa;
+  text-decoration-color: #555;
+  text-underline-offset: 2px;
 }
 
 .how-routes strong {
@@ -1300,6 +1306,20 @@ body {
   display: none;
 }
 
+.image-preview {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #050505;
+  animation: workspace-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.image-preview[hidden] {
+  display: none;
+}
+
 .model-trace {
   top: 0;
   right: 0;
@@ -1412,6 +1432,224 @@ body {
   font-size: 10px;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.model-trace {
+  transition: width 220ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.model-trace:has(.trace-deep[open]) {
+  width: min(520px, 48vw);
+}
+
+.trace-deep {
+  border-top: 1px solid var(--hairline);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.trace-deep[hidden] {
+  display: none;
+}
+
+.trace-deep > summary,
+.trace-step > details > summary,
+.trace-deep-decision > summary,
+.trace-family > summary,
+.trace-decision-group > summary {
+  list-style: none;
+}
+
+.trace-deep > summary::-webkit-details-marker,
+.trace-step > details > summary::-webkit-details-marker,
+.trace-deep-decision > summary::-webkit-details-marker,
+.trace-family > summary::-webkit-details-marker,
+.trace-decision-group > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trace-deep > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 40px;
+  color: #a3a3a3;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.trace-deep > summary span:last-child {
+  color: #666;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 9px;
+}
+
+.trace-timeline {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.trace-step {
+  border-top: 1px solid var(--hairline);
+}
+
+.trace-step > details > summary {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 8px;
+  min-height: 42px;
+  padding: 12px 0;
+  cursor: pointer;
+}
+
+.trace-step > details > summary span:first-child {
+  color: #555;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 8px;
+}
+
+.trace-step > details > summary span:nth-child(2) {
+  color: #ededed;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.trace-step > details > summary span:last-child {
+  max-width: 210px;
+  overflow: hidden;
+  color: #777;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 8px;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-step-body {
+  padding: 0 0 14px 32px;
+}
+
+.trace-step-note,
+.trace-deep-decision-body > p,
+.trace-refinement > p {
+  margin: 0 0 9px;
+  color: #8a8a8a;
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+.trace-deep-list,
+.trace-probabilities {
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.trace-deep-list li,
+.trace-probabilities li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 25px;
+  color: #858585;
+  font-size: 9px;
+}
+
+.trace-deep-list li > span:last-child,
+.trace-probabilities li > span:last-child {
+  color: #b8b8b8;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-align: right;
+}
+
+.trace-deep-decision,
+.trace-family,
+.trace-decision-group {
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.trace-deep-decision > summary,
+.trace-family > summary,
+.trace-decision-group > summary {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 34px;
+  padding: 9px 0;
+  color: #a3a3a3;
+  font-size: 9px;
+  cursor: pointer;
+}
+
+.trace-deep-decision > summary span:last-child,
+.trace-family > summary span:last-child,
+.trace-decision-group > summary span:last-child {
+  color: #777;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 8px;
+  text-align: right;
+}
+
+.trace-deep-decision-body,
+.trace-family-body,
+.trace-decision-group > div {
+  padding: 2px 0 10px;
+}
+
+.trace-refinement + .trace-refinement {
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.trace-provenance {
+  max-height: 330px;
+  overflow: auto;
+}
+
+.trace-provenance > details > summary {
+  display: grid;
+  grid-template-columns: minmax(110px, 1.2fr) minmax(70px, 0.8fr) minmax(95px, 1fr);
+  gap: 10px;
+  align-items: baseline;
+  min-height: 30px;
+  padding: 7px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.055);
+  font-size: 8px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.trace-provenance > details > summary::-webkit-details-marker {
+  display: none;
+}
+
+.trace-provenance code {
+  overflow-wrap: anywhere;
+  color: #a3a3a3;
+}
+
+.trace-provenance > details > summary > span:nth-child(2) {
+  overflow: hidden;
+  color: #ededed;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trace-provenance > details > summary > span:last-child {
+  color: #777;
+  text-align: right;
+}
+
+.trace-provenance > details > p {
+  padding: 0 0 9px;
+  margin: 0;
+  color: #777;
+  font-size: 8px;
+  line-height: 1.5;
 }
 
 .session-ledger {
@@ -1621,6 +1859,11 @@ body {
   left: auto;
 }
 
+.composition-route-group-image .route-tooltip {
+  right: 0;
+  left: auto;
+}
+
 .route-control:hover > .route-tooltip,
 .route-control:focus-within > .route-tooltip {
   opacity: 1;
@@ -1737,6 +1980,11 @@ body {
 
 .model-trace[data-source="sandbox-code"] .trace-code {
   margin-top: 0;
+}
+
+.model-trace[data-source="image-generation"] .trace-decisions,
+.model-trace[data-source="image-generation"] .trace-code {
+  display: none;
 }
 
 #prompt-input,
@@ -1924,6 +2172,22 @@ body {
     background: rgba(0, 0, 0, 0.9);
     border: 1px solid var(--hairline);
     border-radius: 9px;
+  }
+
+  .model-trace:has(.trace-deep[open]) {
+    width: auto;
+  }
+
+  .trace-step > details > summary span:last-child {
+    max-width: 120px;
+  }
+
+  .trace-provenance > details > summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .trace-provenance code {
+    grid-column: 1 / -1;
   }
 
   .session-ledger {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildRelevantArtQuestions, extractExplicitColors, reconcileArtSpec } from "../server/art-reconciler.js";
+import { buildRelevantArtQuestions, buildRelevantArtRouting, extractExplicitColors, reconcileArtSpec } from "../server/art-reconciler.js";
 import { buildArtQuestions } from "../shared/art-grammar.js";
 
 function choiceAnswers() {
@@ -29,6 +29,18 @@ describe("art reconciliation", () => {
     expect(questions.texture).toBeUndefined();
     expect(questions.layer1_noise).toBeDefined();
     expect(questions.layer1_blendMode).toBeUndefined();
+  });
+
+  it("records the exact routing reason for every skipped question", () => {
+    const routing = buildRelevantArtRouting({
+      fieldIntent: "MARKS",
+      relevance: { palette: 3, composition: 3, marks: 3, space: 0.4, motion: 0.47, texture: 3, symmetry: 3, atmosphere: 3, disorder: 3 },
+    });
+    expect(routing.skipped).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "gradient", family: "fieldIntent", reason: expect.stringContaining("flat field") }),
+      expect.objectContaining({ id: "motion", family: "motion", reason: expect.stringContaining("0.47 / 3") }),
+      expect.objectContaining({ id: "negativeSpace", family: "space", reason: expect.stringContaining("0.4 / 3") }),
+    ]));
   });
 
   it("omits detailed layer construction when mark-making has low relevance", () => {
@@ -63,6 +75,11 @@ describe("art reconciliation", () => {
     expect(result.spec.requestedColors).toEqual(["RED", "GREEN", "WHITE"]);
     expect([result.spec.primaryColor, result.spec.secondaryColor, result.spec.accentColor]).toEqual(["RED", "GREEN", "WHITE"]);
     expect(new Set(result.spec.layers.map((layer) => layer.colorRole))).toEqual(new Set(["PRIMARY", "SECONDARY", "ACCENT"]));
+    expect(result.provenance).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "fieldTreatment", source: "tier1", value: "MARKS" }),
+      expect.objectContaining({ path: "primaryColor", source: "literal-constraint", value: "RED" }),
+      expect.objectContaining({ path: "motion", source: "relevance-fallback", value: "STILL" }),
+    ]));
   });
 
   it.each([

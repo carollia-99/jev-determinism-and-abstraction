@@ -4,6 +4,7 @@ import { mountComposer } from "./composer-ui.js";
 
 const canvasRoot = document.querySelector("#canvas-root");
 const sandboxPreview = document.querySelector("#sandbox-preview");
+const imagePreview = document.querySelector("#image-preview");
 const downloadButton = document.querySelector("[data-download-art]");
 const howDialog = document.querySelector("#how-it-works");
 const howTrigger = document.querySelector("[data-how-open]");
@@ -24,6 +25,13 @@ function setDownloadPending(pending) {
 }
 
 downloadButton.addEventListener("click", () => {
+  if (!imagePreview.hidden && imagePreview.src) {
+    setDownloadPending(true);
+    downloadHref(imagePreview.src);
+    setDownloadPending(false);
+    return;
+  }
+
   if (!sandboxPreview.hidden && sandboxPreview.contentWindow) {
     const requestId = crypto.randomUUID();
     pendingSandboxDownload = requestId;

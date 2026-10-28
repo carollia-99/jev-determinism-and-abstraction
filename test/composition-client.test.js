@@ -2,6 +2,26 @@ import { describe, expect, it, vi } from "vitest";
 import { requestArtComposition } from "../src/composition-client.js";
 
 describe("composition client", () => {
+  it("sends the selected image model for direct image generation", async () => {
+    const fetchFn = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "application/json" },
+      json: async () => ({ mode: "image", image: { dataUrl: "data:image/png;base64,aA==" } }),
+    });
+
+    await requestArtComposition(
+      "yellow light",
+      { mode: "image", model: "recraft/recraft-v4.1-flash" },
+      fetchFn,
+    );
+
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
+      prompt: "yellow light",
+      mode: "image",
+      model: "recraft/recraft-v4.1-flash",
+    });
+  });
+
   it("posts the art prompt", async () => {
     const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ decisionCount: 80 }) }));
     const result = await requestArtComposition("quiet geometry", fetchFn);

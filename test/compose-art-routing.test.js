@@ -10,6 +10,19 @@ const routeReceipt = {
 };
 
 describe("automatic Jev handoff", () => {
+  it("routes direct image generation without invoking Jev", async () => {
+    const composeImage = vi.fn(async () => ({ mode: "image", source: "image-generation" }));
+    const routeJev = vi.fn();
+    const result = await composeArt(
+      { prompt: "a luminous portrait", mode: "image", model: "openai/gpt-image-2.5-flare" },
+      { composeImage, routeJev },
+    );
+
+    expect(result).toEqual({ mode: "image", source: "image-generation" });
+    expect(composeImage).toHaveBeenCalledOnce();
+    expect(routeJev).not.toHaveBeenCalled();
+  });
+
   it("uses Jev directly for live previews without running the route check", async () => {
     const routeJev = vi.fn();
     const composeJev = vi.fn(async () => ({ mode: "jev", source: "jev-art" }));

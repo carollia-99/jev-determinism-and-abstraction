@@ -47,6 +47,20 @@ function choiceConfidence(answer) {
   return Number.isFinite(selected) ? selected : null;
 }
 
+function serializeRouteDecision(id, question, answer) {
+  return {
+    id,
+    type: question.type,
+    instructions: question.instructions,
+    criteria: question.criteria,
+    selected: answer?.choice ?? null,
+    confidence: choiceConfidence(answer),
+    probabilities: Object.fromEntries(
+      Object.entries(answer?.probabilities ?? {}).filter(([, probability]) => Number.isFinite(probability)),
+    ),
+  };
+}
+
 export async function routePromptWithJev(body, options = {}) {
   const { prompt } = validateComposeRequest(body);
   const decideFn = options.decideFn ?? decide;
@@ -84,6 +98,8 @@ export async function routePromptWithJev(body, options = {}) {
     reason: ROUTE_REASONS[reasonKey] ?? (route === "CUSTOM_CODE"
       ? "The prompt requires capabilities outside the fixed renderer."
       : ROUTE_REASONS.SPEC_IS_ENOUGH),
+    decisions: Object.entries(COMPOSITION_ROUTE_QUESTION).map(([id, question]) =>
+      serializeRouteDecision(id, question, result.answers?.[id])),
     model: resolvedModel,
     latencyMs,
     receipt: createAIReceipt(result, {

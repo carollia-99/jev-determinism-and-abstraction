@@ -1,12 +1,13 @@
 import { composeArtWithJev } from "./compose-with-jev.js";
 import { composeArtWithModel, isMissingGatewayAuth } from "./compose-with-model.js";
 import { composeArtWithCode, isMissingSandboxAuth } from "./compose-with-code.js";
+import { composeArtWithImage } from "./compose-with-image.js";
 import { routePromptWithJev } from "./route-with-jev.js";
 
 function compositionMode(body) {
   const mode = body?.mode ?? "jev";
-  if (mode !== "jev" && mode !== "model" && mode !== "code") {
-    throw new TypeError("Composition mode must be jev, model, or code.");
+  if (mode !== "jev" && mode !== "model" && mode !== "code" && mode !== "image") {
+    throw new TypeError("Composition mode must be jev, model, code, or image.");
   }
   return mode;
 }
@@ -16,6 +17,7 @@ export async function composeArt(body, options = {}) {
   const emit = options.onProgress ?? (() => {});
   if (mode === "model") return (options.composeModel ?? composeArtWithModel)(body, { ...options.model, onProgress: emit });
   if (mode === "code") return (options.composeCode ?? composeArtWithCode)(body, { ...options.code, onProgress: emit });
+  if (mode === "image") return (options.composeImage ?? composeArtWithImage)(body, { ...options.image, onProgress: emit });
   if (body?.live === true) return (options.composeJev ?? composeArtWithJev)(body, { ...options.jev, onProgress: emit });
 
   emit({ stage: "route-check", status: "running", label: "Jev route check", message: "Jev is checking whether the fixed renderer can express this prompt…", detail: "Comparing populate spec with custom code" });
@@ -82,7 +84,7 @@ export async function createComposeResponse(body) {
       return { status: 503, body: { error: "AI Gateway authentication is not configured.", code: "MISSING_AI_GATEWAY_AUTH" } };
     }
     const codeFailure = mode === "code" || error?.autoRoutedFromJev;
-    const routeLabel = mode === "model" ? "Comparison model" : codeFailure ? "Custom code + Sandbox" : "Jev";
+    const routeLabel = mode === "model" ? "Comparison model" : mode === "image" ? "Image model" : codeFailure ? "Custom code + Sandbox" : "Jev";
     const detail = publicComposeErrorDetail(error, codeFailure);
     console.error(`${routeLabel} art composition failed`, error);
     return {
@@ -90,10 +92,12 @@ export async function createComposeResponse(body) {
       body: {
         error: mode === "model"
           ? "The comparison model could not compose this artwork."
+          : mode === "image"
+            ? "The image model could not generate this artwork."
           : codeFailure
             ? "The model or Sandbox could not build this artwork."
             : "Jev could not compose this artwork.",
-        code: mode === "model" ? "MODEL_COMPOSITION_FAILED" : codeFailure ? "CODE_COMPOSITION_FAILED" : "JEV_COMPOSITION_FAILED",
+        code: mode === "model" ? "MODEL_COMPOSITION_FAILED" : mode === "image" ? "IMAGE_GENERATION_FAILED" : codeFailure ? "CODE_COMPOSITION_FAILED" : "JEV_COMPOSITION_FAILED",
         ...(detail ? { detail } : {}),
       },
     };
@@ -127,10 +131,12 @@ export function createComposeErrorResponse(error, mode = "jev") {
     body: {
       error: mode === "model"
         ? "The comparison model could not compose this artwork."
+        : mode === "image"
+          ? "The image model could not generate this artwork."
         : codeFailure
           ? "The model or Sandbox could not build this artwork."
           : "Jev could not compose this artwork.",
-      code: mode === "model" ? "MODEL_COMPOSITION_FAILED" : codeFailure ? "CODE_COMPOSITION_FAILED" : "JEV_COMPOSITION_FAILED",
+      code: mode === "model" ? "MODEL_COMPOSITION_FAILED" : mode === "image" ? "IMAGE_GENERATION_FAILED" : codeFailure ? "CODE_COMPOSITION_FAILED" : "JEV_COMPOSITION_FAILED",
       ...(detail ? { detail } : {}),
     },
   };
