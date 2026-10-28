@@ -67,9 +67,12 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   let compositionMode = "jev";
   let lastSandboxPreview = "";
   let sandboxCountdownTimer = null;
+  let liveRequestRunning = false;
+  let queuedLivePrompt = "";
+  let artMorphTimer = null;
 
   comparisonModel.replaceChildren(...[
-    { id: "jev", label: "Jev (fastest)" },
+    { id: "jev", label: "Jev (live, fastest)" },
     ...COMPARISON_MODELS,
   ].map((model) => {
     const option = document.createElement("option");
@@ -80,7 +83,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   comparisonModel.value = "jev";
 
   function renderSpec(spec) {
-    status.textContent = `${titleCase(spec.composition)} · ${activePalette(spec).toLowerCase()} · ${spec.atmosphere.toLowerCase()}`;
+    status.textContent = `composition: ${String(spec.composition).toLowerCase()} · ${activePalette(spec).toLowerCase()} · ${spec.atmosphere.toLowerCase()}`;
     artSpecCode.textContent = JSON.stringify(spec, null, 2);
   }
 
@@ -293,12 +296,60 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     });
   }
 
-  function setPending(pending) {
-    promptInput.disabled = pending;
+  function setPending(pending, { live = false } = {}) {
+    promptInput.disabled = pending && !live;
     submitButton.disabled = pending;
     compositionModeButtons.forEach((button) => { button.disabled = pending; });
     comparisonModel.disabled = pending;
-    submitButton.textContent = pending ? "Composing…" : "Compose";
+    submitButton.textContent = pending ? live ? "Updating…" : "Composing…" : "Compose";
+  }
+
+  function clearArtMorph() {
+    if (artMorphTimer !== null) window.clearTimeout(artMorphTimer);
+    artMorphTimer = null;
+    canvasRoot.querySelectorAll(".art-morph-ghost").forEach((ghost) => ghost.remove());
+  }
+
+  function applyArtSpec(nextSpec, { morph = false } = {}) {
+    const sourceCanvas = canvasRoot.querySelector("canvas:not(.art-morph-ghost)");
+    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!morph || !sourceCanvas || reduceMotion) {
+      clearArtMorph();
+      updateArtSpec(nextSpec);
+      return;
+    }
+
+    clearArtMorph();
+    const ghost = document.createElement("canvas");
+    ghost.className = "art-morph-ghost";
+    ghost.width = sourceCanvas.width;
+    ghost.height = sourceCanvas.height;
+    ghost.setAttribute("aria-hidden", "true");
+    ghost.getContext("2d")?.drawImage(sourceCanvas, 0, 0);
+    canvasRoot.append(ghost);
+    updateArtSpec(nextSpec);
+    window.requestAnimationFrame(() => ghost.setAttribute("data-fading", "true"));
+    artMorphTimer = window.setTimeout(() => {
+      ghost.remove();
+      artMorphTimer = null;
+    }, 480);
+  }
+
+  function scheduleLiveCompose() {
+    if (compositionMode !== "jev" || comparisonModel.value !== "jev") return;
+    const prompt = promptInput.value.trim();
+    if (prompt.length < 3) {
+      promptMessage.textContent = prompt ? "Keep typing to start the Jev live preview." : "";
+      promptMessage.dataset.tone = "pending";
+      return;
+    }
+    if (liveRequestRunning) {
+      queuedLivePrompt = prompt;
+      return;
+    }
+    promptMessage.textContent = "Jev live preview will update as you type…";
+    promptMessage.dataset.tone = "pending";
+    compose(prompt, { live: true });
   }
 
   function clearSandboxCountdown() {
@@ -378,6 +429,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   }
 
   function setCompositionMode(mode, { preserveCanvas = false } = {}) {
+    if (mode !== "jev") {
+      queuedLivePrompt = "";
+    }
     compositionMode = mode;
     compositionModeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.compositionMode === mode)));
     modelPicker.dataset.active = String(mode !== "code");
@@ -388,10 +442,11 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     if (!showSandbox) renderSpec(getArtSpec());
   }
 
-  async function compose(prompt) {
+  async function compose(prompt, { live = false } = {}) {
     const requestedMode = compositionMode;
+    if (live) liveRequestRunning = true;
     clearSandboxCountdown();
-    setPending(true);
+    setPending(true, { live });
     promptMessage.textContent = requestedMode === "model"
       ? "The comparison model is generating all 80 renderer decisions in one structured response…"
       : requestedMode === "code"
@@ -404,8 +459,10 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       const result = await requestArtComposition(prompt, {
         mode: requestedMode,
         model: requestedMode === "model" ? comparisonModel.value : undefined,
+        live,
         onProgress: renderProgress,
       });
+      if (live && compositionMode !== "jev") return;
       if (result.mode === "code") {
         lastSandboxPreview = result.previewUrl;
         sandboxPreview.src = result.previewUrl;
@@ -413,7 +470,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         canvasRoot.hidden = true;
         status.textContent = `${result.title} · isolated sandbox preview`;
       } else {
-        updateArtSpec(result.spec);
+        applyArtSpec(result.spec, { morph: live });
         sandboxPreview.hidden = true;
         canvasRoot.hidden = false;
       }
@@ -434,6 +491,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       });
       if (result.mode === "code") {
         startSandboxCountdown(result);
+      } else if (live) {
+        promptMessage.textContent = `Jev updated the canvas in ${formatDuration(result.latencyMs)}.`;
+        promptMessage.title = "Live Jev requests populate the fixed renderer directly and do not reroute to custom code.";
       } else if (result.mode === "model") {
         promptMessage.textContent = "See Decision Trace for details.";
         promptMessage.removeAttribute("title");
@@ -443,24 +503,48 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       }
       promptMessage.dataset.tone = "success";
     } catch (error) {
+      if (live && (compositionMode !== "jev" || promptInput.value.trim() !== prompt)) return;
+      const failedStage = {
+        "code-generation": "writing the custom JavaScript",
+        "sandbox-create": "creating the Vercel Sandbox",
+        "syntax-check": "checking the generated JavaScript",
+        "runtime-check": "validating the generated JavaScript",
+        "preview-start": "starting the Sandbox preview",
+        "preview-ready": "opening the Sandbox preview",
+      }[error.stage];
+      const codeFailure = requestedMode === "code" || error.code === "CODE_COMPOSITION_FAILED";
+      const codeFailureDetail = error.detail ?? (error.code === "INVALID_REQUEST" ? error.message : null);
+      const codeFailureMessage = codeFailureDetail
+        ? `Custom code + Sandbox failed${failedStage ? ` while ${failedStage}` : ""}: ${codeFailureDetail}`
+        : `Custom code + Sandbox failed${failedStage ? ` while ${failedStage}` : ""}. The generated result can vary, so try composing it again.`;
       trace.dataset.status = "error";
       trace.dataset.source = "error";
-      traceSource.textContent = "Composition unavailable";
-      traceMeta.textContent = "Artwork unchanged";
+      traceSource.textContent = codeFailure && failedStage ? `Failed while ${failedStage}` : "Composition unavailable";
+      traceMeta.textContent = codeFailureDetail ?? error.detail ?? "Artwork unchanged";
       promptMessage.textContent = error.code === "MISSING_AI_GATEWAY_AUTH"
         ? "Add AI_GATEWAY_API_KEY to compose through AI Gateway."
         : error.code === "MISSING_SANDBOX_AUTH"
           ? "Link this project to Vercel and pull its environment to enable Sandbox previews."
-          : `${requestedMode === "model" ? "The comparison model" : requestedMode === "code" || error.code === "CODE_COMPOSITION_FAILED" ? "Custom code + Sandbox" : "Jev"} could not compose this piece: ${error.message}`;
+          : codeFailure
+            ? codeFailureMessage
+            : `${requestedMode === "model" ? "The comparison model" : "Jev"} could not compose this piece: ${error.detail ?? error.message}`;
       promptMessage.dataset.tone = "error";
-      promptMessage.removeAttribute("title");
+      if (codeFailure) promptMessage.title = "The previous artwork remains on the canvas. You can retry the same prompt.";
+      else promptMessage.removeAttribute("title");
     } finally {
+      if (live) liveRequestRunning = false;
       setPending(false);
+      if (live && queuedLivePrompt) {
+        const nextPrompt = queuedLivePrompt;
+        queuedLivePrompt = "";
+        if (compositionMode === "jev" && promptInput.value.trim() === nextPrompt) scheduleLiveCompose();
+      }
     }
   }
 
   function onSubmit(event) {
     event.preventDefault();
+    queuedLivePrompt = "";
     const prompt = promptInput.value.trim();
     if (!prompt) {
       promptInput.setAttribute("aria-invalid", "true");
@@ -479,16 +563,24 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     if (!button) return;
     promptInput.value = button.dataset.examplePrompt;
     promptInput.focus();
+    scheduleLiveCompose();
   }
 
   function onCompositionMode(event) {
     const button = event.target.closest("[data-composition-mode]");
     if (!button || button.disabled) return;
+    queuedLivePrompt = "";
     setCompositionMode(button.dataset.compositionMode);
   }
 
-  function onComparisonModelActivate() {
-    if (!comparisonModel.disabled) setCompositionMode(comparisonModel.value === "jev" ? "jev" : "model");
+  function onComparisonModelActivate(event) {
+    if (!comparisonModel.disabled) {
+      setCompositionMode(comparisonModel.value === "jev" ? "jev" : "model");
+      if (event.type === "change" && comparisonModel.value === "jev") scheduleLiveCompose();
+      else if (comparisonModel.value !== "jev") {
+        queuedLivePrompt = "";
+      }
+    }
   }
 
   function onReset() {
@@ -506,6 +598,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   }
 
   promptForm.addEventListener("submit", onSubmit);
+  promptInput.addEventListener("input", scheduleLiveCompose);
   compositionModeButtons.forEach((button) => button.addEventListener("click", onCompositionMode));
   comparisonModel.addEventListener("focus", onComparisonModelActivate);
   comparisonModel.addEventListener("change", onComparisonModelActivate);
@@ -521,7 +614,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   renderHistory(getSessionHistory());
   return () => {
     clearSandboxCountdown();
+    clearArtMorph();
     promptForm.removeEventListener("submit", onSubmit);
+    promptInput.removeEventListener("input", scheduleLiveCompose);
     compositionModeButtons.forEach((button) => button.removeEventListener("click", onCompositionMode));
     comparisonModel.removeEventListener("focus", onComparisonModelActivate);
     comparisonModel.removeEventListener("change", onComparisonModelActivate);

@@ -10,6 +10,19 @@ const routeReceipt = {
 };
 
 describe("automatic Jev handoff", () => {
+  it("uses Jev directly for live previews without running the route check", async () => {
+    const routeJev = vi.fn();
+    const composeJev = vi.fn(async () => ({ mode: "jev", source: "jev-art" }));
+    const result = await composeArt(
+      { prompt: "green blue", mode: "jev", live: true },
+      { routeJev, composeJev },
+    );
+
+    expect(result).toEqual({ mode: "jev", source: "jev-art" });
+    expect(composeJev).toHaveBeenCalledOnce();
+    expect(routeJev).not.toHaveBeenCalled();
+  });
+
   it("hands a custom route to code and preserves the full receipt chain", async () => {
     const onProgress = vi.fn();
     const composeCode = vi.fn(async () => ({

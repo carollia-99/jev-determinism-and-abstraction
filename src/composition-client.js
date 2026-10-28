@@ -4,15 +4,21 @@ async function readCompositionStream(response, onProgress) {
   const decoder = new TextDecoder();
   let buffer = "";
   let result = null;
+  let lastProgress = null;
 
   const consumeLine = (line) => {
     if (!line.trim()) return;
     const event = JSON.parse(line);
-    if (event.type === "progress") onProgress?.(event.progress);
+    if (event.type === "progress") {
+      lastProgress = event.progress;
+      onProgress?.(event.progress);
+    }
     if (event.type === "result") result = event.body;
     if (event.type === "error") {
       const error = new Error(event.body?.error || "The composition request failed.");
       error.code = event.body?.code || "COMPOSITION_FAILED";
+      error.detail = event.body?.detail ?? null;
+      error.stage = event.body?.stage ?? lastProgress?.stage ?? null;
       throw error;
     }
   };
@@ -39,6 +45,7 @@ export async function requestArtComposition(prompt, modeOrOptions = "jev", reque
   const onProgress = typeof options.onProgress === "function" ? options.onProgress : null;
   const body = { prompt, mode };
   if (mode === "model" && options.model) body.model = options.model;
+  if (mode === "jev" && options.live === true) body.live = true;
   const response = await fetchFn("/api/compose-art", {
     method: "POST",
     headers: {
@@ -53,6 +60,8 @@ export async function requestArtComposition(prompt, modeOrOptions = "jev", reque
   if (!response.ok) {
     const error = new Error(payload.error || "The composition request failed.");
     error.code = payload.code || "COMPOSITION_FAILED";
+    error.detail = payload.detail ?? null;
+    error.stage = payload.stage ?? null;
     throw error;
   }
   return payload;

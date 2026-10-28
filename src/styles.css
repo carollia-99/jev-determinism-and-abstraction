@@ -1056,7 +1056,7 @@ body {
   overflow: auto;
   color: #ededed;
   background: #050505;
-  border: 1px solid #333;
+  border: 0;
   border-radius: 12px;
   box-shadow: 0 28px 100px rgba(0, 0, 0, 0.72);
 }
@@ -1079,8 +1079,7 @@ body {
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
-  padding-bottom: 18px;
-  border-bottom: 1px solid var(--hairline);
+  padding-bottom: 10px;
 }
 
 .how-kicker,
@@ -1099,9 +1098,9 @@ body {
 
 .how-dialog h2 {
   margin-top: 5px;
-  font-size: 26px;
+  font-size: 18px;
   font-weight: 560;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.02em;
 }
 
 .how-close {
@@ -1113,7 +1112,7 @@ body {
 
 .how-intro {
   max-width: 540px;
-  padding: 18px 0;
+  padding: 14px 0 24px;
   color: #a1a1a1;
   font-size: 14px;
   line-height: 1.55;
@@ -1134,17 +1133,16 @@ body {
 .how-routes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-top: 1px solid var(--hairline);
+  gap: 24px;
 }
 
 .how-routes section {
   min-width: 0;
-  padding: 18px 16px 18px 0;
+  padding: 0;
 }
 
 .how-routes section + section {
-  padding-left: 16px;
-  border-left: 1px solid var(--hairline);
+  padding-left: 0;
 }
 
 .how-routes p {
@@ -1271,7 +1269,21 @@ body {
 }
 
 #canvas-root {
+  position: relative;
   animation: workspace-enter 420ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+#canvas-root .art-morph-ghost {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  opacity: 1;
+  transition: opacity 480ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+#canvas-root .art-morph-ghost[data-fading="true"] {
+  opacity: 0;
 }
 
 .sandbox-preview {
@@ -1791,6 +1803,14 @@ body {
   color: #a1a1a1;
 }
 
+.prompt-description {
+  max-width: 290px;
+  margin: 5px 0 0;
+  color: #666;
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .mode-controls {
   align-items: center;
   padding-top: 14px;
@@ -1874,15 +1894,15 @@ body {
 
   .how-routes {
     grid-template-columns: 1fr;
+    gap: 20px;
   }
 
   .how-routes section {
-    padding: 14px 0;
+    padding: 0;
   }
 
   .how-routes section + section {
     padding-left: 0;
-    border-top: 1px solid var(--hairline);
     border-left: 0;
   }
 
@@ -1979,5 +1999,9 @@ body {
   #canvas-root,
   .how-dialog[open] {
     animation: none;
+  }
+
+  #canvas-root .art-morph-ghost {
+    transition: none;
   }
 }

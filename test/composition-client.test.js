@@ -25,6 +25,16 @@ describe("composition client", () => {
     });
   });
 
+  it("marks Jev live-preview requests without changing composition mode", async () => {
+    const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ mode: "jev" }) }));
+    await requestArtComposition("green blue", { mode: "jev", live: true }, fetchFn);
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
+      prompt: "green blue",
+      mode: "jev",
+      live: true,
+    });
+  });
+
   it("selects the fixed-model custom code and Sandbox route", async () => {
     const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ mode: "code" }) }));
     const result = await requestArtComposition(
@@ -68,5 +78,30 @@ describe("composition client", () => {
     expect(onProgress.mock.calls.map(([progress]) => progress.stage)).toEqual(["route-check", "code-generation"]);
     expect(result).toEqual({ mode: "code", title: "Subway" });
     expect(fetchFn.mock.calls[0][1].headers.Accept).toBe("application/x-ndjson");
+  });
+
+  it("preserves the failure detail and last live stage from a streamed composition", async () => {
+    const encoder = new TextEncoder();
+    const events = [
+      { type: "progress", progress: { stage: "runtime-check", message: "Validating code" } },
+      { type: "error", body: { error: "The model or Sandbox could not build this artwork.", code: "CODE_COMPOSITION_FAILED", detail: "Sandbox execution failed: arcTo is not defined" } },
+    ];
+    const body = new ReadableStream({
+      start(controller) {
+        events.forEach((event) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`)));
+        controller.close();
+      },
+    });
+    const fetchFn = async () => ({
+      ok: true,
+      headers: { get: () => "application/x-ndjson; charset=utf-8" },
+      body,
+    });
+
+    await expect(requestArtComposition("test", { mode: "code", onProgress() {} }, fetchFn)).rejects.toMatchObject({
+      code: "CODE_COMPOSITION_FAILED",
+      detail: "Sandbox execution failed: arcTo is not defined",
+      stage: "runtime-check",
+    });
   });
 });

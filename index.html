@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <title>A programmatic canvas</title>
+    <title>Make abstract art with natural language</title>
   </head>
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>A programmatic canvas</h1><button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button></div></div>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>Make abstract art with natural language</h1><button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button></div></div>
         <div class="header-actions">
-          <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · cyan → yellow · joyful</span></p>
+          <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">composition: flow · cyan → yellow · joyful</span></p>
         </div>
       </header>
 
@@ -21,11 +21,11 @@
             <div><p class="how-kicker">Guide</p><h2 id="how-title">How it works</h2></div>
             <button type="button" class="how-close" data-how-close aria-label="Close how it works window">Close</button>
           </header>
-          <p class="how-intro" id="how-intro">This project turns natural language into programmatic art using the <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> framework. Compare three ways of translating a prompt into a rendered artwork, along with their results, cost, and speed:</p>
+          <p class="how-intro" id="how-intro">This project lets you programmatically create art with natural language using the <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> framework. There are three ways to do so, depending on your fidelity, speed, and cost requirements:</p>
           <div class="how-routes" aria-label="Composition paths">
-            <section><p>Jev</p><strong>Selective decision routing</strong><span>First checks whether the fixed renderer can express the prompt. If it can, Jev identifies the important parts, such as palette, composition, marks, space, and motion, and routes the relevant choices across 80+ typed characteristics. If it cannot, Jev hands the prompt to custom code.</span></section>
+            <section><p>Jev (fastest, live)</p><strong>Selective decision routing</strong><span>Updates the fixed renderer as you type. Jev identifies the important parts, such as palette, composition, marks, space, and motion, and routes the relevant choices across 80+ typed characteristics. Select Compose to also check whether a prompt should be handed to custom code.</span></section>
             <section><p>Other models</p><strong>Complete spec in one call</strong><span>Fills every field in the same art spec at once, without Jev’s selective routing. This provides a direct baseline for comparing the result, cost, and speed.</span></section>
-            <section><p>Custom code + Sandbox</p><strong>Beyond the fixed spec</strong><span>When prefilling the art spec is not expressive enough, Claude Sonnet 4.6 writes custom JavaScript and runs it in Vercel Sandbox.</span></section>
+            <section><p>Custom code + sandbox (most expressive)</p><strong>Beyond the fixed spec</strong><span>When prefilling the art spec is not expressive enough, Claude Sonnet 4.6 writes custom JavaScript and runs it in Vercel Sandbox.</span></section>
           </div>
           <footer class="how-dialog-footer"><button type="button" data-how-close>Start composing</button></footer>
         </div>
@@ -72,7 +72,7 @@
       </section>
 
       <section class="prompt-control" aria-labelledby="prompt-label">
-        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p></div>
+        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p><p class="prompt-description">Jev will route prompts that can't be properly expressed via static args to be generated via custom code.</p></div>
         <div class="composition-workspace">
           <div class="composition-settings">
             <div class="composition-route-group">
