@@ -7,13 +7,14 @@ function notify() {
   listeners.forEach((listener) => listener(snapshot));
 }
 
-export function recordSessionRequest({ prompt, outcome, steps, source = "jev", model = null }) {
+export function recordSessionRequest({ prompt, outcome, steps, source = "jev", model = null, autoRoute = null }) {
   const entry = Object.freeze({
     id: nextId++,
     prompt,
     outcome,
     source,
     model,
+    autoRoute: autoRoute ? Object.freeze({ ...autoRoute }) : null,
     steps: Object.freeze(steps.filter(Boolean).map((step) => Object.freeze({ ...step }))),
   });
   entries = [...entries, entry];

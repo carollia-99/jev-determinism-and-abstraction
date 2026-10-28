@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from "vite";
 import { createComposeResponse } from "./server/compose-art.js";
+import { streamComposeArt } from "./server/compose-stream.js";
 
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
@@ -28,7 +29,18 @@ function localInterpretApi() {
         if (request.method !== "POST") return next();
 
         try {
-          const result = await createComposeResponse(await readJsonBody(request));
+          const body = await readJsonBody(request);
+          if (String(request.headers.accept ?? "").includes("application/x-ndjson")) {
+            response.statusCode = 200;
+            response.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+            response.setHeader("Cache-Control", "no-cache, no-transform");
+            response.setHeader("X-Accel-Buffering", "no");
+            response.flushHeaders?.();
+            await streamComposeArt(body, (event) => response.write(`${JSON.stringify(event)}\n`));
+            response.end();
+            return;
+          }
+          const result = await createComposeResponse(body);
           response.statusCode = result.status;
           response.setHeader("Content-Type", "application/json");
           response.end(JSON.stringify(result.body));

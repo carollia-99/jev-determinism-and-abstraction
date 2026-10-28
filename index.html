@@ -4,12 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <title>A canvas for your model</title>
+    <title>A programmatic canvas</title>
   </head>
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>A canvas for your model</h1><button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button></div></div>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>A programmatic canvas</h1><button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button></div></div>
         <div class="header-actions">
           <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · cyan → yellow · joyful</span></p>
         </div>
@@ -21,16 +21,11 @@
             <div><p class="how-kicker">Guide</p><h2 id="how-title">How it works</h2></div>
             <button type="button" class="how-close" data-how-close aria-label="Close how it works window">Close</button>
           </header>
-          <p class="how-intro" id="how-intro">Describe an image, choose how the model should interpret it, then compare the artwork, timing, and cost.</p>
-          <ol class="how-steps">
-            <li><span>01</span><div><h3>Choose a path</h3><p>Use Jev or another model to populate the built-in art controls. Choose Custom code when those controls are not expressive enough.</p></div></li>
-            <li><span>02</span><div><h3>Write a prompt</h3><p>Enter your own idea or start with a prompt example. Select Compose to generate the artwork.</p></div></li>
-            <li><span>03</span><div><h3>Inspect the result</h3><p>Decision trace shows the applied visual choices. Session receipt records AI Gateway calls, latency, tokens, and reported cost.</p></div></li>
-          </ol>
+          <p class="how-intro" id="how-intro">This project turns natural language into programmatic art using the <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> framework. Compare three ways of translating a prompt into a rendered artwork, along with their results, cost, and speed:</p>
           <div class="how-routes" aria-label="Composition paths">
-            <section><p>Jev</p><strong>Relevant typed decisions</strong><span>Fastest route through the fixed renderer.</span></section>
-            <section><p>Other models</p><strong>Complete structured spec</strong><span>One model call fills the same renderer controls.</span></section>
-            <section><p>Custom code + Sandbox</p><strong>Claude Sonnet 4.6</strong><span>Sonnet writes a Canvas program that Vercel Sandbox validates before it appears in an isolated iframe.</span></section>
+            <section><p>Jev</p><strong>Selective decision routing</strong><span>First checks whether the fixed renderer can express the prompt. If it can, Jev identifies the important parts, such as palette, composition, marks, space, and motion, and routes the relevant choices across 80+ typed characteristics. If it cannot, Jev hands the prompt to custom code.</span></section>
+            <section><p>Other models</p><strong>Complete spec in one call</strong><span>Fills every field in the same art spec at once, without Jev’s selective routing. This provides a direct baseline for comparing the result, cost, and speed.</span></section>
+            <section><p>Custom code + Sandbox</p><strong>Beyond the fixed spec</strong><span>When prefilling the art spec is not expressive enough, Claude Sonnet 4.6 writes custom JavaScript and runs it in Vercel Sandbox.</span></section>
           </div>
           <footer class="how-dialog-footer"><button type="button" data-how-close>Start composing</button></footer>
         </div>
@@ -46,13 +41,18 @@
               <div class="trace-header-meta"><p class="trace-meta" data-trace-meta></p><span class="trace-chevron" aria-hidden="true"></span></div>
             </summary>
             <div class="trace-body">
-              <div class="trace-summary"><span>Decision surface</span><span><strong data-trace-verdict>80 applied</strong><span data-trace-average>—</span></span></div>
+              <p class="trace-route-reason" data-trace-route-reason hidden></p>
+              <div class="trace-summary"><span title="The typed renderer characteristics considered for this composition.">Decision surface</span><span><strong data-trace-verdict title="Characteristics accepted and applied to the renderer.">80 applied</strong><span data-trace-average title="Additional routing detail for this composition.">—</span></span></div>
+              <div class="trace-decision-lists" data-trace-decision-lists hidden>
+                <details><summary><span>Applied decisions</span><span data-trace-applied-count></span></summary><ul data-trace-applied-list></ul></details>
+                <details><summary><span>Omitted decisions</span><span data-trace-omitted-count></span></summary><ul data-trace-omitted-list></ul></details>
+              </div>
               <dl class="trace-decisions">
-                <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>CYAN → YELLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>CYAN → YELLOW</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
               </dl>
               <details class="trace-code art-spec-details"><summary>View art spec</summary><pre><code data-art-spec></code></pre></details>
             </div>
@@ -74,7 +74,7 @@
               <div class="composition-route-heading">
                 <p class="composition-route-label">Populate spec</p>
               </div>
-              <label class="model-picker route-control" data-model-picker data-active="true"><span class="sr-only">Model used to populate the art spec</span><select id="comparison-model" aria-label="Model used to populate the art spec" aria-describedby="populate-spec-tooltip"></select><span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">A spec is the structured set of art controls used by the built-in renderer. Jev selects relevant fields; other models fill every field.</span></label>
+              <label class="model-picker route-control" data-model-picker data-active="true"><span class="sr-only">Model used to populate the art spec</span><select id="comparison-model" aria-label="Model used to populate the art spec" aria-describedby="populate-spec-tooltip"></select><span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">The model populates the renderer spec directly, with characteristics such as primaryColor and texture.</span></label>
             </div>
             <div class="composition-route-group composition-route-group-code">
               <div class="composition-route-heading">
@@ -97,8 +97,8 @@
         <div class="mode-list" id="example-prompts">
           <button type="button" data-example-prompt="green blue gradient"><span>01</span> Green blue gradient</button>
           <button type="button" data-example-prompt="a heat haze in the desert"><span>02</span> Desert heat haze</button>
-          <button type="button" data-example-prompt="geometric shapes in bright day"><span>03</span> Bright geometry</button>
-          <button type="button" data-example-prompt="midnight anxiety"><span>04</span> Midnight anxiety</button>
+          <button type="button" data-example-prompt="Interactive subway map where connecting lines redraw as it moves."><span>03</span> Subway map</button>
+          <button type="button" data-example-prompt="geometric shapes in bright day"><span>04</span> Bright geometric shapes</button>
         </div>
       </nav>
     </main>

@@ -182,8 +182,10 @@ export async function composeArtWithCode(body, options = {}) {
   const generateTextFn = options.generateTextFn ?? generateText;
   const SandboxClass = options.SandboxClass ?? Sandbox;
   const modelId = options.modelId ?? CODE_MODEL_ID;
+  const emit = options.onProgress ?? (() => {});
   const startedAt = performance.now();
   const generationStartedAt = performance.now();
+  emit({ stage: "code-generation", status: "running", label: "Writing custom JavaScript", message: "Claude Sonnet 4.6 is writing custom Canvas JavaScript…", detail: modelId });
   const result = await generateTextFn({
     model: options.model ?? modelId,
     output: Output.object({
@@ -217,10 +219,12 @@ Runtime contract:
     latencyMs: generationLatencyMs,
     stage: "model-code",
   });
+  emit({ stage: "code-generation", status: "complete", label: "JavaScript generated", message: "Custom JavaScript generated and the static policy check passed…", detail: `${code.length.toLocaleString()} characters · ${generationLatencyMs} ms` });
 
   let sandbox = null;
   const sandboxStartedAt = performance.now();
   try {
+    emit({ stage: "sandbox-create", status: "running", label: "Creating Vercel Sandbox", message: "Creating an isolated Vercel Sandbox…", detail: "Network disabled · temporary preview" });
     sandbox = await SandboxClass.create({
       image: "vercel/sandbox/universal:latest",
       persistent: false,
@@ -229,6 +233,7 @@ Runtime contract:
       networkPolicy: "deny-all",
       tags: { purpose: "decision-canvas-preview" },
     });
+    emit({ stage: "sandbox-create", status: "complete", label: "Sandbox ready", message: "Sandbox created. Uploading the artwork and preview runtime…", detail: sandbox.name });
     await sandbox.writeFiles([
       { path: "index.html", content: previewHtml(title) },
       { path: "sketch.js", content: code },
@@ -236,12 +241,15 @@ Runtime contract:
       { path: "validate.mjs", content: VALIDATOR_SOURCE },
       { path: "server.mjs", content: SERVER_SOURCE },
     ]);
+    emit({ stage: "syntax-check", status: "running", label: "Checking JavaScript syntax", message: "Running the JavaScript syntax check inside the Sandbox…", detail: "node --check sketch.js" });
     const syntax = await sandbox.runCommand("node", ["--check", "sketch.js"], { timeoutMs: 5_000 });
     const syntaxError = await commandError(syntax, "JavaScript syntax check");
     if (syntaxError) throw syntaxError;
+    emit({ stage: "runtime-check", status: "running", label: "Executing validation run", message: "Syntax passed. Executing the generated JavaScript in the Sandbox validation runtime…", detail: "Canvas API smoke test" });
     const validation = await sandbox.runCommand("node", ["validate.mjs"], { timeoutMs: 5_000 });
     const validationError = await commandError(validation, "Sandbox execution");
     if (validationError) throw validationError;
+    emit({ stage: "preview-start", status: "running", label: "Starting preview", message: "JavaScript executed successfully. Starting the isolated preview server…", detail: "Waiting for the public preview route" });
     await sandbox.runCommand({ cmd: "node", args: ["server.mjs"], detached: true });
     const previewUrl = sandbox.domain(PREVIEW_PORT);
     await waitForPreview(previewUrl, {
@@ -249,6 +257,7 @@ Runtime contract:
       delayFn: options.delayFn,
       attempts: options.previewAttempts,
     });
+    emit({ stage: "preview-ready", status: "complete", label: "Preview live", message: "The Sandbox preview is live…", detail: "Generated JavaScript is running in the isolated iframe" });
 
     const sandboxLatencyMs = Math.round(performance.now() - sandboxStartedAt);
     const sandboxReceipt = {

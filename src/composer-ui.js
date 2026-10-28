@@ -5,8 +5,24 @@ import { ART_DECISION_COUNT } from "../shared/art-grammar.js";
 import { COMPARISON_MODELS, comparisonModelLabel } from "../shared/comparison-models.js";
 
 const DIMENSIONS = ["composition", "palette", "marks", "space", "motion"];
-const MAX_DECISION_COUNT = ART_DECISION_COUNT + 17;
+const MAX_DECISION_COUNT = ART_DECISION_COUNT + 16;
 const titleCase = (value) => String(value).toLowerCase().split("_").map((word) => word[0].toUpperCase() + word.slice(1)).join(" ");
+const decisionLabel = (value) => String(value)
+  .replace(/_/g, " ")
+  .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+  .replace(/\b\w/g, (letter) => letter.toUpperCase());
+function decisionOutcome(decision) {
+  const confidence = Number.isFinite(decision.confidence)
+    ? `Confidence ${Math.round(decision.confidence * 100)}%`
+    : "Confidence —";
+  if (decision.type === "score" && Number.isFinite(decision.selected)) {
+    const score = Number(decision.selected.toFixed(2));
+    const maximum = Array.isArray(decision.criteria) ? decision.criteria.length - 1 : null;
+    return `Score ${score}${maximum == null ? "" : ` / ${maximum}`} · ${confidence}`;
+  }
+  const selected = decision.selected == null ? "Applied" : decisionLabel(decision.selected);
+  return `${selected} · ${confidence}`;
+}
 const formatCost = (value) => Number.isFinite(value) ? `$${value.toFixed(6)}` : "cost —";
 const formatTokens = (value) => Number.isFinite(value) ? `${value.toLocaleString()} tok` : "tokens —";
 const formatDuration = (value) => Number.isFinite(value) ? (value >= 1000 ? `${(value / 1000).toFixed(2)} s` : `${value} ms`) : "time —";
@@ -35,8 +51,14 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   const traceVerdict = trace.querySelector("[data-trace-verdict]");
   const traceAverage = trace.querySelector("[data-trace-average]");
   const traceSummaryLabel = trace.querySelector(".trace-summary > span:first-child");
+  const traceRouteReason = trace.querySelector("[data-trace-route-reason]");
   const artSpecCode = trace.querySelector("[data-art-spec]");
   const artSpecSummary = trace.querySelector(".art-spec-details summary");
+  const traceDecisionLists = trace.querySelector("[data-trace-decision-lists]");
+  const traceAppliedCount = trace.querySelector("[data-trace-applied-count]");
+  const traceOmittedCount = trace.querySelector("[data-trace-omitted-count]");
+  const traceAppliedList = trace.querySelector("[data-trace-applied-list]");
+  const traceOmittedList = trace.querySelector("[data-trace-omitted-list]");
   const traceRows = new Map([...trace.querySelectorAll("[data-trace-dimension]")].map((row) => [row.dataset.traceDimension, row]));
   const ledgerTotal = sessionLedger.querySelector("[data-ledger-total]");
   const ledgerEmpty = sessionLedger.querySelector("[data-ledger-empty]");
@@ -61,56 +83,148 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     artSpecCode.textContent = JSON.stringify(spec, null, 2);
   }
 
-  function renderTrace({ source = "", model = "", latencyMs, decisionCount = ART_DECISION_COUNT, appliedDecisionCount = ART_DECISION_COUNT, skippedDecisionCount = 0, omittedCount = 0, averageConfidence = null, highlights = defaultHighlights(getArtSpec()) } = {}) {
+  function renderDecisionLists(decisionTrace) {
+    if (!decisionTrace?.tier1?.decisions || !decisionTrace?.tier2?.decisions) {
+      traceDecisionLists.hidden = true;
+      traceAppliedList.replaceChildren();
+      traceOmittedList.replaceChildren();
+      return;
+    }
+
+    const uncertain = new Set(decisionTrace.compile?.omittedQuestionIds ?? []);
+    const applied = [...decisionTrace.tier1.decisions, ...decisionTrace.tier2.decisions]
+      .filter((decision) => !uncertain.has(decision.id));
+    const omitted = [
+      ...(decisionTrace.routing?.skippedQuestionIds ?? []).map((id) => ({ id, reason: "irrelevant" })),
+      ...(decisionTrace.compile?.omittedQuestionIds ?? []).map((id) => ({ id, reason: "uncertain" })),
+    ];
+
+    traceAppliedList.replaceChildren(...applied.map((decision) => {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      const outcome = document.createElement("span");
+      name.textContent = decisionLabel(decision.id);
+      outcome.textContent = decisionOutcome(decision);
+      if (decision.type === "score" && Array.isArray(decision.criteria)) {
+        outcome.title = decision.criteria.map((criterion, index) => `${index}: ${criterion}`).join(" · ");
+      }
+      item.append(name, outcome);
+      return item;
+    }));
+    traceOmittedList.replaceChildren(...omitted.map(({ id, reason }) => {
+      const item = document.createElement("li");
+      const name = document.createElement("span");
+      const outcome = document.createElement("span");
+      name.textContent = decisionLabel(id);
+      outcome.textContent = reason;
+      item.append(name, outcome);
+      return item;
+    }));
+    traceAppliedCount.textContent = String(applied.length);
+    traceOmittedCount.textContent = String(omitted.length);
+    traceDecisionLists.hidden = false;
+  }
+
+  function renderTrace({ source = "", model = "", latencyMs, appliedDecisionCount = ART_DECISION_COUNT, skippedDecisionCount = 0, omittedCount = 0, averageConfidence = null, highlights = defaultHighlights(getArtSpec()), decisionTrace = null, autoRoute = null } = {}) {
     const isModelComposition = source !== "Jev" && Boolean(model);
     trace.dataset.status = "complete";
     trace.dataset.source = isModelComposition ? "model-art" : "jev-art";
     traceSummaryLabel.textContent = "Decision surface";
     artSpecSummary.textContent = "View art spec";
-    traceSource.textContent = source;
-    traceMeta.textContent = latencyMs == null ? model : `${model} · ${latencyMs} ms · ${decisionCount} asked`;
+    traceSource.textContent = autoRoute?.selected === "POPULATE_SPEC" ? "Jev · Populate spec" : source;
+    traceMeta.textContent = latencyMs == null ? model : `${model} · ${latencyMs} ms`;
+    traceMeta.title = latencyMs == null
+      ? "Model used for this composition."
+      : "Model used and end-to-end latency.";
+    traceRouteReason.hidden = !autoRoute?.reason;
+    traceRouteReason.textContent = autoRoute?.reason ? `Route: ${autoRoute.reason}` : "";
     traceVerdict.textContent = `${appliedDecisionCount} applied`;
+    traceVerdict.title = "Characteristics accepted and applied to the renderer.";
     traceAverage.textContent = isModelComposition
       ? ""
       : skippedDecisionCount + omittedCount > 0
       ? `${skippedDecisionCount + omittedCount} omitted`
       : Number.isFinite(averageConfidence) ? `${Math.round(averageConfidence * 100)}% avg` : "—";
+    traceAverage.title = isModelComposition
+      ? "This route fills the complete renderer spec in one structured response."
+      : skippedDecisionCount + omittedCount > 0
+        ? "Questions Jev skipped because they were irrelevant to the prompt or too uncertain to apply."
+        : "Average confidence across the applied Jev decisions.";
+    renderDecisionLists(isModelComposition ? null : decisionTrace);
     for (const dimension of DIMENSIONS) {
       const row = traceRows.get(dimension);
       const decision = highlights[dimension];
       const percent = Number.isFinite(decision?.confidence) ? Math.round(decision.confidence * 100) : null;
       row.querySelector("[data-trace-choice]").textContent = decision?.choice ?? "—";
-      row.querySelector("[data-trace-confidence]").textContent = percent == null ? "—" : `${percent}%`;
+      const confidence = row.querySelector("[data-trace-confidence]");
+      confidence.textContent = percent == null ? "—" : `${percent}%`;
+      confidence.title = percent == null
+        ? "This route does not report confidence for this decision."
+        : "Jev's confidence in this routed decision.";
       row.querySelector("[data-trace-meter]").style.setProperty("--confidence", percent == null ? "0%" : `${percent}%`);
     }
   }
 
   function renderPending(mode) {
+    traceDecisionLists.hidden = true;
+    traceRouteReason.hidden = true;
     trace.dataset.status = "pending";
     trace.dataset.source = mode === "model" ? "model-art" : mode === "code" ? "sandbox-code" : "jev-art";
     traceSource.textContent = mode === "model"
       ? `${comparisonModelLabel(comparisonModel.value)} is composing`
       : mode === "code"
         ? "Building isolated artwork"
-        : "Jev is composing";
+        : "Jev is checking renderer fit";
     traceMeta.textContent = mode === "model"
       ? `${ART_DECISION_COUNT} fields → one structured object`
       : mode === "code"
         ? "Model → JavaScript → Vercel Sandbox"
-        : `Visual thesis → up to ${MAX_DECISION_COUNT} typed decisions`;
+        : `Route check → visual thesis → up to ${MAX_DECISION_COUNT} typed decisions`;
+    traceMeta.title = "The composition pipeline currently being evaluated.";
     traceVerdict.textContent = mode === "model" ? "Generating…" : mode === "code" ? "Generating…" : "Thesis…";
+    traceVerdict.title = "Composition is still in progress.";
     traceAverage.textContent = "—";
+    traceAverage.title = "Routing detail will appear when composition completes.";
+  }
+
+  function renderProgress(progress) {
+    if (!progress) return;
+    trace.dataset.status = "pending";
+    trace.dataset.source = progress.stage?.startsWith("sandbox") || ["code-generation", "syntax-check", "runtime-check", "preview-start", "preview-ready"].includes(progress.stage)
+      ? "sandbox-code"
+      : "jev-art";
+    traceSource.textContent = progress.label ?? "Composing";
+    traceMeta.textContent = progress.autoRouted && progress.routeReason
+      ? `Rerouted: ${progress.routeReason}`
+      : progress.detail ?? "";
+    traceMeta.title = progress.autoRouted && progress.routeReason
+      ? `Jev selected custom code because ${progress.routeReason.toLowerCase()}`
+      : progress.detail ?? "Current composition step.";
+    traceRouteReason.hidden = !progress.routeReason;
+    traceRouteReason.textContent = progress.routeReason ? `Route: ${progress.routeReason}` : "";
+    traceVerdict.textContent = progress.status === "complete" ? "Complete" : "Running…";
+    traceVerdict.title = "Live execution status.";
+    traceAverage.textContent = "";
+    traceAverage.title = "";
+    promptMessage.textContent = progress.message ?? "Composing…";
+    promptMessage.title = progress.routeReason ?? progress.detail ?? "";
   }
 
   function renderCodeTrace(result) {
+    traceDecisionLists.hidden = true;
     trace.dataset.status = "complete";
     trace.dataset.source = "sandbox-code";
     traceSummaryLabel.textContent = "Execution path";
     artSpecSummary.textContent = "View generated JavaScript";
-    traceSource.textContent = "Custom code + Sandbox";
+    traceSource.textContent = result.autoRoute ? "Jev → Custom code + Sandbox" : "Custom code + Sandbox";
     traceMeta.textContent = `${result.model} · ${result.latencyMs} ms`;
+    traceMeta.title = "Code-generation model and total end-to-end latency.";
     traceVerdict.textContent = "Preview live";
+    traceVerdict.title = "The generated JavaScript passed validation and is running in an isolated preview.";
     traceAverage.textContent = `${result.trace.checks.length} checks`;
+    traceAverage.title = "Validation checks completed before the preview was exposed.";
+    traceRouteReason.hidden = !result.autoRoute?.reason;
+    traceRouteReason.textContent = result.autoRoute?.reason ? `Route: ${result.autoRoute.reason}` : "";
     artSpecCode.textContent = result.code;
   }
 
@@ -132,7 +246,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       prompt.title = entry.prompt;
       const outcome = document.createElement("strong");
       outcome.textContent = entry.source === "sandbox-code"
-        ? "Custom code + Sandbox"
+        ? entry.autoRoute ? "Jev → Custom code + Sandbox" : "Custom code + Sandbox"
         : entry.source === "model-art" || entry.source === "model"
           ? comparisonModelLabel(entry.model)
           : "Jev";
@@ -150,12 +264,14 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       entry.steps.filter((step) => step.stage !== "sandbox-execution").forEach((step) => {
         const row = document.createElement("li");
         const stage = document.createElement("span");
-        stage.textContent = step.stage === "model-code"
+        stage.textContent = step.stage === "composition-route"
+          ? "Jev · route check"
+          : step.stage === "model-code"
           ? `${comparisonModelLabel(step.model)} · JavaScript`
           : step.stage === "thesis"
           ? "Jev · visual direction"
           : step.stage === "thesis-refinement"
-            ? "Jev · visual direction clarification"
+            ? "Jev · uncertain choices rechecked"
             : step.stage === "model-composition" ? `${comparisonModelLabel(step.model)} · one-shot` : "Jev · renderer choices";
         stage.title = step.model;
         const metrics = document.createElement("span");
@@ -192,14 +308,16 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     promptMessage.textContent = requestedMode === "model"
       ? "The comparison model is generating all 80 renderer decisions in one structured response…"
       : requestedMode === "code"
-        ? "The model is writing Canvas JavaScript, then Vercel Sandbox will validate and run it…"
-        : "Jev is establishing a visual thesis, then asking only relevant questions…";
+        ? "Writing custom Javascript with the canvas-sketch framework, then using Vercel Sandbox to validate and run..."
+        : "Jev is checking whether the fixed renderer can express this prompt…";
     promptMessage.dataset.tone = "pending";
+    promptMessage.removeAttribute("title");
     renderPending(requestedMode);
     try {
       const result = await requestArtComposition(prompt, {
         mode: requestedMode,
         model: requestedMode === "model" ? comparisonModel.value : undefined,
+        onProgress: renderProgress,
       });
       if (result.mode === "code") {
         lastSandboxPreview = result.previewUrl;
@@ -216,7 +334,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         renderCodeTrace(result);
       } else {
         const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
-        renderTrace({ source, model: result.model, latencyMs: result.latencyMs, decisionCount: result.decisionCount, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights });
+        renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute });
       }
       recordSessionRequest({
         prompt,
@@ -224,16 +342,19 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         steps: result.receipts.filter((receipt) => receipt.stage !== "sandbox-execution"),
         source: result.source,
         model: result.model,
+        autoRoute: result.autoRoute,
       });
       if (result.mode === "code") {
-        promptMessage.textContent = `${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${Math.round(result.expiresInMs / 60_000)} min.`;
+        promptMessage.textContent = result.autoRoute
+          ? `Jev routed this prompt to custom code. ${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${Math.round(result.expiresInMs / 60_000)} min.`
+          : `${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${Math.round(result.expiresInMs / 60_000)} min.`;
+        promptMessage.title = "Total time includes code generation, Sandbox validation, and preview startup. The isolated preview is temporary.";
+      } else if (result.mode === "model") {
+        promptMessage.textContent = "See Decision Trace for details.";
+        promptMessage.removeAttribute("title");
       } else {
-        const average = Number.isFinite(result.averageConfidence) ? ` · ${Math.round(result.averageConfidence * 100)}% average confidence` : "";
-        const restrained = result.skippedDecisionCount + result.omitted.length;
-        const repaired = result.repairs.length ? ` · ${result.repairs.length} compatibility ${result.repairs.length === 1 ? "repair" : "repairs"}` : "";
-        promptMessage.textContent = result.mode === "model"
-          ? `${result.appliedDecisionCount} generated in one call · ${result.latencyMs} ms${repaired}.`
-          : `${result.appliedDecisionCount} applied · ${restrained} irrelevant or uncertain omitted · ${result.latencyMs} ms${average}${repaired}.`;
+        promptMessage.textContent = "See Decision Trace for details.";
+        promptMessage.removeAttribute("title");
       }
       promptMessage.dataset.tone = "success";
     } catch (error) {
@@ -245,8 +366,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         ? "Add AI_GATEWAY_API_KEY to compose through AI Gateway."
         : error.code === "MISSING_SANDBOX_AUTH"
           ? "Link this project to Vercel and pull its environment to enable Sandbox previews."
-          : `${requestedMode === "model" ? "The comparison model" : requestedMode === "code" ? "Custom code + Sandbox" : "Jev"} could not compose this piece: ${error.message}`;
+          : `${requestedMode === "model" ? "The comparison model" : requestedMode === "code" || error.code === "CODE_COMPOSITION_FAILED" ? "Custom code + Sandbox" : "Jev"} could not compose this piece: ${error.message}`;
       promptMessage.dataset.tone = "error";
+      promptMessage.removeAttribute("title");
     } finally {
       setPending(false);
     }
@@ -259,6 +381,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       promptInput.setAttribute("aria-invalid", "true");
       promptMessage.textContent = "Describe an artwork before composing.";
       promptMessage.dataset.tone = "error";
+      promptMessage.removeAttribute("title");
       promptInput.focus();
       return;
     }
@@ -293,6 +416,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     renderTrace({ highlights: defaultHighlights(spec) });
     promptMessage.textContent = "Session receipt cleared and the default composition restored.";
     promptMessage.dataset.tone = "success";
+    promptMessage.removeAttribute("title");
   }
 
   promptForm.addEventListener("submit", onSubmit);

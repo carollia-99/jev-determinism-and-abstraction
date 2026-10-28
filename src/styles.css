@@ -63,6 +63,19 @@ input {
   text-transform: uppercase;
 }
 
+.trace-route-reason {
+  margin: 0;
+  padding: 9px 0;
+  color: #a6a9a1;
+  font-size: 9px;
+  line-height: 1.45;
+  border-top: 1px solid rgba(240, 242, 233, 0.11);
+}
+
+.trace-route-reason[hidden] {
+  display: none;
+}
+
 .session-ledger {
   position: absolute;
   bottom: 16px;
@@ -349,6 +362,73 @@ h1 {
   font-weight: 500;
 }
 
+.trace-decision-lists {
+  display: grid;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.trace-decision-lists[hidden] {
+  display: none;
+}
+
+.trace-decision-lists details + details {
+  border-top: 1px solid var(--hairline);
+}
+
+.trace-decision-lists summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 34px;
+  color: #888;
+  cursor: pointer;
+  font-size: 10px;
+  list-style: none;
+}
+
+.trace-decision-lists summary::-webkit-details-marker {
+  display: none;
+}
+
+.trace-decision-lists summary span:last-child {
+  color: #ededed;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 9px;
+}
+
+.trace-decision-lists ul {
+  max-height: 170px;
+  padding: 0 0 8px;
+  margin: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.trace-decision-lists li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  min-height: 24px;
+  padding: 4px 0;
+  color: #a1a1a1;
+  font-size: 9px;
+}
+
+.trace-decision-lists li span:last-child {
+  flex: 0 0 auto;
+  color: #737373;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.trace-decision-lists li span[title] {
+  cursor: help;
+  text-decoration: underline dotted #555;
+  text-underline-offset: 3px;
+}
+
 .trace-code summary,
 .trace-code pre {
   margin: 0;
@@ -563,8 +643,7 @@ h1 {
 
 #prompt-form button:focus-visible,
 .model-picker select:focus-visible,
-.mode-list button:focus-visible,
-#prompt-input:focus-visible {
+.mode-list button:focus-visible {
   outline: 2px solid #fff;
   outline-offset: 3px;
 }
@@ -1026,45 +1105,22 @@ body {
   line-height: 1.55;
 }
 
-.how-steps {
-  padding: 0;
-  margin: 0;
-  border-top: 1px solid var(--hairline);
-  list-style: none;
+.how-intro a {
+  color: #ededed;
+  text-decoration: underline;
+  text-decoration-color: #666;
+  text-underline-offset: 3px;
 }
 
-.how-steps li {
-  display: grid;
-  grid-template-columns: 40px minmax(0, 1fr);
-  gap: 12px;
-  padding: 16px 0;
-  border-bottom: 1px solid var(--hairline);
-}
-
-.how-steps li > span {
-  padding-top: 2px;
-  color: #666;
-  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  font-size: 10px;
-}
-
-.how-steps h3 {
-  font-size: 13px;
-  font-weight: 550;
-}
-
-.how-steps p {
-  max-width: 540px;
-  margin-top: 5px;
-  color: #888;
-  font-size: 12px;
-  line-height: 1.5;
+.how-intro a:hover,
+.how-intro a:focus-visible {
+  text-decoration-color: #ededed;
 }
 
 .how-routes {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  border-bottom: 1px solid var(--hairline);
+  border-top: 1px solid var(--hairline);
 }
 
 .how-routes section {
@@ -1130,6 +1186,15 @@ body {
   font-weight: 450;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.prompt-message[title],
+.trace-meta[title],
+.trace-summary [title],
+.trace-row [title] {
+  cursor: help;
+  text-decoration: underline dotted #555;
+  text-underline-offset: 3px;
 }
 
 .status-dot {
@@ -1624,6 +1689,15 @@ body {
   border-color: #333;
 }
 
+#prompt-form {
+  border-radius: 7px;
+  transition: box-shadow 140ms ease;
+}
+
+#prompt-form:focus-within {
+  box-shadow: 0 0 0 1px #777;
+}
+
 #prompt-input {
   padding: 0 14px;
   color: #ededed;
@@ -1637,8 +1711,8 @@ body {
 
 #prompt-input:focus {
   background: #0a0a0a;
-  border-color: #666;
-  box-shadow: inset 0 0 0 1px #666;
+  border-color: #444;
+  box-shadow: none;
 }
 
 #prompt-form button {

@@ -36,9 +36,10 @@ describe("code and Sandbox composition", () => {
   it("generates JavaScript, validates it, and returns an isolated preview", async () => {
     const generateTextFn = vi.fn(async () => generatedResult());
     const { sandbox, SandboxClass } = sandboxHarness();
+    const onProgress = vi.fn();
     const result = await composeArtWithCode(
       { prompt: "living stained glass", model: "openai/gpt-5.4" },
-      { generateTextFn, SandboxClass, sandboxTimeoutMs: 60_000, fetchFn: async () => ({ ok: true, status: 200 }) },
+      { generateTextFn, SandboxClass, sandboxTimeoutMs: 60_000, fetchFn: async () => ({ ok: true, status: 200 }), onProgress },
     );
 
     expect(result).toMatchObject({
@@ -65,6 +66,16 @@ describe("code and Sandbox composition", () => {
     ]));
     expect(sandbox.runCommand).toHaveBeenCalledTimes(3);
     expect(sandbox.stop).not.toHaveBeenCalled();
+    expect(onProgress.mock.calls.map(([progress]) => progress.stage)).toEqual([
+      "code-generation",
+      "code-generation",
+      "sandbox-create",
+      "sandbox-create",
+      "syntax-check",
+      "runtime-check",
+      "preview-start",
+      "preview-ready",
+    ]);
   });
 
   it("stops the Sandbox when generated code fails its runtime smoke test", async () => {

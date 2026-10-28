@@ -17,7 +17,7 @@ import {
 
 const DEFAULT_MODEL = "typesafe-ai/jev-1.14.0";
 const THESIS_DECISION_COUNT = Object.keys(THESIS_QUESTIONS).length;
-export const MAX_ART_DECISION_COUNT = THESIS_DECISION_COUNT + ART_DECISION_COUNT;
+export const MAX_ART_DECISION_COUNT = THESIS_DECISION_COUNT + ART_DECISION_COUNT - 1;
 const ROUTING_THRESHOLD = 1.5;
 const CORE_THESIS_CONFIDENCE = 0.55;
 const REFINABLE_THESIS_IDS = ["fieldIntent", "dominantColor", "colorCoverage", "formIntent"];
@@ -40,6 +40,7 @@ function serializeDecision(id, question, answer) {
     id,
     type: question.type,
     instructions: question.instructions,
+    criteria: question.criteria,
     selected,
     confidence: roundProbability(answerConfidence(answer)),
     probabilities,
@@ -119,8 +120,10 @@ export async function composeArtWithJev(body, options = {}) {
   const modelId = options.modelId ?? process.env.JEV_MODEL ?? DEFAULT_MODEL;
   const model = options.model ?? gateway.decisionModel(modelId);
   const startedAt = performance.now();
+  const emit = options.onProgress ?? (() => {});
   const literalConstraints = { colors: extractExplicitColors(prompt) };
   const thesisStartedAt = performance.now();
+  emit({ stage: "thesis", status: "running", label: "Visual direction", message: "Jev is establishing the artwork’s visual direction…", detail: "Palette, composition, form, space, and motion" });
   const thesisResult = await decideFn({
     model,
     state: {
@@ -133,6 +136,7 @@ export async function composeArtWithJev(body, options = {}) {
     questions: THESIS_QUESTIONS,
   });
   const thesisLatencyMs = Math.round(performance.now() - thesisStartedAt);
+  emit({ stage: "thesis", status: "complete", label: "Visual direction set", message: "Jev established the visual direction and is checking confidence…", detail: `${thesisLatencyMs} ms` });
   const thesisAnswers = { ...thesisResult.answers };
   const refinableIds = REFINABLE_THESIS_IDS.filter((id) => (answerConfidence(thesisAnswers[id]) ?? 0) < CORE_THESIS_CONFIDENCE);
   const refinementQuestions = Object.fromEntries(refinableIds.map((id) => [id, THESIS_QUESTIONS[id]]));
@@ -141,6 +145,7 @@ export async function composeArtWithJev(body, options = {}) {
   const acceptedRefinementIds = [];
   if (refinableIds.length) {
     const refinementStartedAt = performance.now();
+    emit({ stage: "thesis-refinement", status: "running", label: "Rechecking uncertain choices", message: `Jev is rechecking ${refinableIds.length} uncertain visual ${refinableIds.length === 1 ? "choice" : "choices"}…`, detail: refinableIds.join(", ") });
     refinementResult = await decideFn({
       model,
       state: {
@@ -163,11 +168,13 @@ export async function composeArtWithJev(body, options = {}) {
         acceptedRefinementIds.push(id);
       }
     }
+    emit({ stage: "thesis-refinement", status: "complete", label: "Uncertain choices rechecked", message: "Jev finished rechecking uncertain visual choices…", detail: `${acceptedRefinementIds.length} improved · ${refinementLatencyMs} ms` });
   }
   const thesis = thesisFromAnswers(thesisAnswers, literalConstraints);
   const questions = buildRelevantArtQuestions(thesis);
 
   const detailStartedAt = performance.now();
+  emit({ stage: "composition", status: "running", label: "Renderer choices", message: `Jev is resolving ${Object.keys(questions).length} relevant renderer characteristics…`, detail: "Only prompt-relevant questions are being asked" });
   const result = await decideFn({
     model,
     state: {
@@ -181,6 +188,7 @@ export async function composeArtWithJev(body, options = {}) {
     questions,
   });
   const detailLatencyMs = Math.round(performance.now() - detailStartedAt);
+  emit({ stage: "composition", status: "complete", label: "Renderer choices complete", message: "Jev completed the renderer choices. Drawing the artwork…", detail: `${detailLatencyMs} ms` });
 
   const { spec, omitted, repairs } = reconcileArtSpec({
     prompt,

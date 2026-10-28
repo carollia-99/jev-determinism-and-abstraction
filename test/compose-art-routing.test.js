@@ -1,0 +1,84 @@
+import { describe, expect, it, vi } from "vitest";
+import { composeArt } from "../server/compose-art.js";
+
+const routeReceipt = {
+  stage: "composition-route",
+  model: "typesafe-ai/jev-test",
+  latencyMs: 12,
+  tokens: { total: 8 },
+  costUsd: 0.00001,
+};
+
+describe("automatic Jev handoff", () => {
+  it("hands a custom route to code and preserves the full receipt chain", async () => {
+    const onProgress = vi.fn();
+    const composeCode = vi.fn(async () => ({
+      source: "sandbox-code",
+      mode: "code",
+      model: "anthropic/claude-sonnet-4.6",
+      latencyMs: 100,
+      receipts: [{ stage: "model-code" }, { stage: "sandbox-execution" }],
+      trace: { checks: [] },
+    }));
+    const result = await composeArt(
+      { prompt: "draw an interactive clock", mode: "jev" },
+      {
+        routeJev: async () => ({
+          route: "CUSTOM_CODE",
+          requestedRoute: "CUSTOM_CODE",
+          confidence: 0.9,
+          threshold: 0.65,
+          model: "typesafe-ai/jev-test",
+          latencyMs: 12,
+          receipt: routeReceipt,
+        }),
+        composeCode,
+        composeJev: vi.fn(),
+        onProgress,
+      },
+    );
+
+    expect(composeCode).toHaveBeenCalledOnce();
+    expect(result.latencyMs).toBe(112);
+    expect(result.receipts.map((receipt) => receipt.stage)).toEqual([
+      "composition-route",
+      "model-code",
+      "sandbox-execution",
+    ]);
+    expect(result.autoRoute).toMatchObject({ selected: "CUSTOM_CODE", confidence: 0.9 });
+    expect(onProgress.mock.calls.slice(0, 2).map(([progress]) => [progress.stage, progress.status])).toEqual([
+      ["route-check", "running"],
+      ["route-check", "complete"],
+    ]);
+  });
+
+  it("continues through Jev when the spec is expressive enough", async () => {
+    const composeJev = vi.fn(async () => ({
+      source: "jev-art",
+      model: "typesafe-ai/jev-test",
+      latencyMs: 80,
+      receipts: [{ stage: "thesis" }, { stage: "composition" }],
+      trace: { tier1: {}, tier2: {} },
+    }));
+    const result = await composeArt(
+      { prompt: "green blue gradient", mode: "jev" },
+      {
+        routeJev: async () => ({
+          route: "POPULATE_SPEC",
+          requestedRoute: "POPULATE_SPEC",
+          confidence: 0.94,
+          threshold: 0.65,
+          model: "typesafe-ai/jev-test",
+          latencyMs: 12,
+          receipt: routeReceipt,
+        }),
+        composeCode: vi.fn(),
+        composeJev,
+      },
+    );
+
+    expect(composeJev).toHaveBeenCalledOnce();
+    expect(result.trace.gate.route).toBe("POPULATE_SPEC");
+    expect(result.receipts[0].stage).toBe("composition-route");
+  });
+});

@@ -29,6 +29,8 @@ export async function composeArtWithModel(body, options = {}) {
   }
   const modelId = options.modelId ?? (requestedModel || process.env.COMPARISON_MODEL || DEFAULT_COMPARISON_MODEL);
   const startedAt = performance.now();
+  const emit = options.onProgress ?? (() => {});
+  emit({ stage: "model-composition", status: "running", label: "Populating art spec", message: "The selected model is generating the complete renderer spec…", detail: modelId });
 
   const result = await generateTextFn({
     model: options.model ?? modelId,
@@ -67,6 +69,7 @@ Rules:
     latencyMs,
     stage: "model-composition",
   });
+  emit({ stage: "model-composition", status: "complete", label: "Art spec complete", message: "The renderer spec is complete. Applying it to the canvas…", detail: `${resolvedModel} · ${latencyMs} ms` });
 
   return {
     source: "model-art",
