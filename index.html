@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#090a0c" />
+    <title>Jev × Canvas — Decision Canvas</title>
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="masthead">
+        <div><p class="eyebrow">JEV × CANVAS / 008</p><h1>Decision canvas</h1></div>
+        <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · indigo → black · mysterious</span></p>
+      </header>
+
+      <section class="canvas-stage" aria-label="Jev-directed generative artwork">
+        <div id="canvas-root"></div>
+        <aside class="model-trace" id="model-trace" aria-live="polite" aria-label="Jev art decision trace">
+          <div class="trace-header">
+            <div><p class="trace-label">Decision trace</p><p class="trace-source" data-trace-source>Default composition</p></div>
+            <p class="trace-meta" data-trace-meta>Fixed seeded renderer</p>
+          </div>
+          <div class="trace-capability"><span>Decision surface</span><span><strong data-trace-verdict>80 applied</strong><span data-trace-average>—</span></span></div>
+          <dl class="trace-decisions">
+            <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+            <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>INDIGO → BLACK</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+            <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+            <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+            <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+          </dl>
+          <details class="trace-code art-spec-details"><summary>View applied art spec</summary><pre><code data-art-spec></code></pre></details>
+        </aside>
+
+        <aside class="session-ledger" id="session-ledger" aria-live="polite" aria-label="AI session history">
+          <div class="ledger-header"><div><p class="ledger-label">Session receipt</p><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p></div><button type="button" data-reset-session>Reset</button></div>
+          <p class="ledger-empty" data-ledger-empty>No AI calls yet</p><ol class="ledger-list" data-ledger-list></ol>
+        </aside>
+        <p class="particle-count">THESIS → UP TO 88 DECISIONS</p>
+      </section>
+
+      <section class="prompt-control" aria-labelledby="prompt-label">
+        <div class="prompt-heading"><p class="control-label" id="prompt-label">Describe the artwork</p><p class="prompt-hint">Jev · relevant decisions only</p></div>
+        <form id="prompt-form" novalidate>
+          <label class="sr-only" for="prompt-input">Describe the artwork to compose</label>
+          <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="A moonlit garden remembering a storm…" aria-describedby="prompt-message" />
+          <button type="submit">Compose</button>
+        </form>
+        <p class="prompt-message" id="prompt-message" aria-live="polite"></p>
+      </section>
+
+      <nav class="mode-controls" aria-label="Example art prompts">
+        <p class="control-label">Starting points</p>
+        <div class="mode-list" id="example-prompts">
+          <button type="button" data-example-prompt="A moonlit garden remembering a storm"><span>01</span> Moonlit garden</button>
+          <button type="button" data-example-prompt="Electric anxiety in a crowded city at midnight"><span>02</span> Electric anxiety</button>
+          <button type="button" data-example-prompt="Quiet geometry floating in a field of warm light"><span>03</span> Quiet geometry</button>
+          <button type="button" data-example-prompt="A vast heat haze over ancient red earth"><span>04</span> Heat haze</button>
+        </div>
+      </nav>
+    </main>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
