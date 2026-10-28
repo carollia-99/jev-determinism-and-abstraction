@@ -49,6 +49,7 @@ describe("code and Sandbox composition", () => {
       previewUrl: "https://preview.vercel.run",
       sandboxId: "sbx_test",
       expiresInMs: 60_000,
+      expiresAt: expect.any(Number),
     });
     expect(result.receipts).toEqual([
       expect.objectContaining({ stage: "model-code", model: "anthropic/claude-sonnet-4.6", costUsd: 0.0012 }),

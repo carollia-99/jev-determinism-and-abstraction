@@ -60,8 +60,13 @@
         </aside>
 
         <aside class="session-ledger" id="session-ledger" aria-live="polite" aria-label="AI session history">
-          <div class="ledger-header"><div><p class="ledger-label">Session receipt</p><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p></div><button type="button" data-reset-session>Reset</button></div>
-          <p class="ledger-empty" data-ledger-empty>No AI Gateway calls yet</p><ol class="ledger-list" data-ledger-list></ol>
+          <details class="session-ledger-disclosure" open>
+            <summary class="ledger-disclosure-summary">Session receipt</summary>
+            <div class="ledger-disclosure-body">
+              <div class="ledger-header"><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p><button type="button" data-reset-session>Reset</button></div>
+              <p class="ledger-empty" data-ledger-empty>No AI Gateway calls yet</p><ol class="ledger-list" data-ledger-list></ol>
+            </div>
+          </details>
         </aside>
         <button type="button" class="download-art" data-download-art aria-label="Download artwork as PNG" title="Download artwork as PNG"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 13h10"/></svg><span>Download</span></button>
       </section>

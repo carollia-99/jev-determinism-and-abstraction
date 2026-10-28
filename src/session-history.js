@@ -7,7 +7,7 @@ function notify() {
   listeners.forEach((listener) => listener(snapshot));
 }
 
-export function recordSessionRequest({ prompt, outcome, steps, source = "jev", model = null, autoRoute = null }) {
+export function recordSessionRequest({ prompt, outcome, steps, source = "jev", model = null, autoRoute = null, snapshot = null }) {
   const entry = Object.freeze({
     id: nextId++,
     prompt,
@@ -15,6 +15,7 @@ export function recordSessionRequest({ prompt, outcome, steps, source = "jev", m
     source,
     model,
     autoRoute: autoRoute ? Object.freeze({ ...autoRoute }) : null,
+    snapshot: snapshot ? Object.freeze({ ...snapshot }) : null,
     steps: Object.freeze(steps.filter(Boolean).map((step) => Object.freeze({ ...step }))),
   });
   entries = [...entries, entry];

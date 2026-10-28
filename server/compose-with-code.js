@@ -185,7 +185,7 @@ export async function composeArtWithCode(body, options = {}) {
   const emit = options.onProgress ?? (() => {});
   const startedAt = performance.now();
   const generationStartedAt = performance.now();
-  emit({ stage: "code-generation", status: "running", label: "Writing custom JavaScript", message: "Claude Sonnet 4.6 is writing custom Canvas JavaScript…", detail: modelId });
+  emit({ stage: "code-generation", status: "running", label: "Writing custom JavaScript", message: "Claude Sonnet 4.6 is writing custom JavaScript with canvas-sketch…", detail: modelId });
   const result = await generateTextFn({
     model: options.model ?? modelId,
     output: Output.object({
@@ -222,9 +222,11 @@ Runtime contract:
   emit({ stage: "code-generation", status: "complete", label: "JavaScript generated", message: "Custom JavaScript generated and the static policy check passed…", detail: `${code.length.toLocaleString()} characters · ${generationLatencyMs} ms` });
 
   let sandbox = null;
+  let sandboxExpiresAt = null;
   const sandboxStartedAt = performance.now();
   try {
     emit({ stage: "sandbox-create", status: "running", label: "Creating Vercel Sandbox", message: "Creating an isolated Vercel Sandbox…", detail: "Network disabled · temporary preview" });
+    sandboxExpiresAt = Date.now() + (options.sandboxTimeoutMs ?? SANDBOX_TIMEOUT_MS);
     sandbox = await SandboxClass.create({
       image: "vercel/sandbox/universal:latest",
       persistent: false,
@@ -276,6 +278,7 @@ Runtime contract:
       previewUrl,
       sandboxId: sandbox.name,
       expiresInMs: options.sandboxTimeoutMs ?? SANDBOX_TIMEOUT_MS,
+      expiresAt: sandboxExpiresAt,
       latencyMs: Math.round(performance.now() - startedAt),
       receipts: [generationReceipt, sandboxReceipt],
       receipt: sandboxReceipt,

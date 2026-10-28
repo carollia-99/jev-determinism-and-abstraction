@@ -53,11 +53,13 @@ describe("session history", () => {
       model: "openai/gpt-5.4-mini",
       outcome: "applied",
       steps: [],
+      snapshot: { mode: "model", spec: { seed: 42 } },
     });
 
     expect(getSessionHistory()[0]).toMatchObject({
       source: "model-art",
       model: "openai/gpt-5.4-mini",
+      snapshot: { mode: "model", spec: { seed: 42 } },
     });
   });
 });

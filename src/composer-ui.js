@@ -66,6 +66,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   const resetButton = sessionLedger.querySelector("[data-reset-session]");
   let compositionMode = "jev";
   let lastSandboxPreview = "";
+  let sandboxCountdownTimer = null;
 
   comparisonModel.replaceChildren(...[
     { id: "jev", label: "Jev (fastest)" },
@@ -242,6 +243,11 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     ledgerList.replaceChildren();
     history.slice(-3).reverse().forEach((entry) => {
       const item = document.createElement("li");
+      item.dataset.sessionId = String(entry.id);
+      item.tabIndex = 0;
+      item.setAttribute("role", "button");
+      item.setAttribute("aria-label", `Restore artwork for ${entry.prompt}`);
+      item.title = "Restore this artwork";
       const heading = document.createElement("div");
       heading.className = "ledger-entry-heading";
       const prompt = document.createElement("span");
@@ -295,6 +301,82 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     submitButton.textContent = pending ? "Composing…" : "Compose";
   }
 
+  function clearSandboxCountdown() {
+    if (sandboxCountdownTimer !== null) window.clearInterval(sandboxCountdownTimer);
+    sandboxCountdownTimer = null;
+  }
+
+  function startSandboxCountdown(result) {
+    clearSandboxCountdown();
+    const expiresAt = Number.isFinite(result.expiresAt) ? result.expiresAt : Date.now() + result.expiresInMs;
+    const routePrefix = result.autoRoute ? "Jev routed this prompt to custom code. " : "";
+    const expirationTime = new Date(expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    const update = () => {
+      const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
+      if (remainingSeconds <= 0) {
+        clearSandboxCountdown();
+        promptMessage.textContent = `${result.title} preview expired. Compose again to create a new Sandbox.`;
+        promptMessage.title = `The temporary Sandbox expired at ${expirationTime}.`;
+        promptMessage.dataset.tone = "error";
+        return;
+      }
+      const minutes = Math.floor(remainingSeconds / 60);
+      const seconds = String(remainingSeconds % 60).padStart(2, "0");
+      promptMessage.textContent = `${routePrefix}${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${minutes}:${seconds}.`;
+      promptMessage.title = `Total time includes code generation, Sandbox validation, and preview startup. The isolated preview expires at ${expirationTime}.`;
+    };
+    update();
+    sandboxCountdownTimer = window.setInterval(update, 1_000);
+  }
+
+  function restoreSession(entry) {
+    const result = entry?.snapshot;
+    if (!result) {
+      promptMessage.textContent = "This earlier session does not contain a restorable visual.";
+      promptMessage.dataset.tone = "error";
+      return;
+    }
+    promptInput.value = entry.prompt;
+    if (result.mode === "code") {
+      if (!Number.isFinite(result.expiresAt) || result.expiresAt <= Date.now()) {
+        promptMessage.textContent = "This Sandbox preview has expired. Compose the prompt again to recreate it.";
+        promptMessage.title = "Sandbox previews are temporary and cannot be reopened after expiration.";
+        promptMessage.dataset.tone = "error";
+        return;
+      }
+      clearSandboxCountdown();
+      lastSandboxPreview = result.previewUrl;
+      setCompositionMode("code", { preserveCanvas: true });
+      sandboxPreview.src = result.previewUrl;
+      sandboxPreview.hidden = false;
+      canvasRoot.hidden = true;
+      status.textContent = `${result.title} · restored sandbox preview`;
+      renderCodeTrace(result);
+      startSandboxCountdown(result);
+    } else {
+      clearSandboxCountdown();
+      comparisonModel.value = result.mode === "model" ? result.model : "jev";
+      setCompositionMode(result.mode === "model" ? "model" : "jev", { preserveCanvas: true });
+      updateArtSpec(result.spec);
+      sandboxPreview.hidden = true;
+      canvasRoot.hidden = false;
+      const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
+      renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute });
+      promptMessage.textContent = "Restored this session’s artwork. See Decision Trace for details.";
+      promptMessage.removeAttribute("title");
+    }
+    promptMessage.dataset.tone = "success";
+  }
+
+  function onLedgerActivate(event) {
+    if (event.type === "keydown" && event.key !== "Enter" && event.key !== " ") return;
+    const item = event.target.closest("[data-session-id]");
+    if (!item) return;
+    if (event.type === "keydown") event.preventDefault();
+    const entry = getSessionHistory().find(({ id }) => id === Number(item.dataset.sessionId));
+    if (entry) restoreSession(entry);
+  }
+
   function setCompositionMode(mode, { preserveCanvas = false } = {}) {
     compositionMode = mode;
     compositionModeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.compositionMode === mode)));
@@ -308,6 +390,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
 
   async function compose(prompt) {
     const requestedMode = compositionMode;
+    clearSandboxCountdown();
     setPending(true);
     promptMessage.textContent = requestedMode === "model"
       ? "The comparison model is generating all 80 renderer decisions in one structured response…"
@@ -347,12 +430,10 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         source: result.source,
         model: result.model,
         autoRoute: result.autoRoute,
+        snapshot: result,
       });
       if (result.mode === "code") {
-        promptMessage.textContent = result.autoRoute
-          ? `Jev routed this prompt to custom code. ${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${Math.round(result.expiresInMs / 60_000)} min.`
-          : `${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${Math.round(result.expiresInMs / 60_000)} min.`;
-        promptMessage.title = "Total time includes code generation, Sandbox validation, and preview startup. The isolated preview is temporary.";
+        startSandboxCountdown(result);
       } else if (result.mode === "model") {
         promptMessage.textContent = "See Decision Trace for details.";
         promptMessage.removeAttribute("title");
@@ -411,6 +492,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   }
 
   function onReset() {
+    clearSandboxCountdown();
     clearSessionHistory();
     const spec = resetArtSpec();
     lastSandboxPreview = "";
@@ -429,6 +511,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   comparisonModel.addEventListener("change", onComparisonModelActivate);
   examples.addEventListener("click", onExample);
   resetButton.addEventListener("click", onReset);
+  ledgerList.addEventListener("click", onLedgerActivate);
+  ledgerList.addEventListener("keydown", onLedgerActivate);
   const unsubscribeSpec = subscribeToArtSpec(renderSpec);
   const unsubscribeHistory = subscribeToSessionHistory(renderHistory);
   renderSpec(getArtSpec());
@@ -436,12 +520,15 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   renderTrace();
   renderHistory(getSessionHistory());
   return () => {
+    clearSandboxCountdown();
     promptForm.removeEventListener("submit", onSubmit);
     compositionModeButtons.forEach((button) => button.removeEventListener("click", onCompositionMode));
     comparisonModel.removeEventListener("focus", onComparisonModelActivate);
     comparisonModel.removeEventListener("change", onComparisonModelActivate);
     examples.removeEventListener("click", onExample);
     resetButton.removeEventListener("click", onReset);
+    ledgerList.removeEventListener("click", onLedgerActivate);
+    ledgerList.removeEventListener("keydown", onLedgerActivate);
     unsubscribeSpec();
     unsubscribeHistory();
   };

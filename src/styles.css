@@ -166,7 +166,21 @@ input {
 .ledger-list > li {
   padding: 8px 0;
   border-top: 1px solid rgba(240, 242, 233, 0.1);
+  cursor: pointer;
   animation: ledger-reveal 260ms ease-out both;
+  transition: background-color 160ms ease, padding 160ms ease;
+}
+
+.ledger-list > li:hover,
+.ledger-list > li:focus-visible {
+  padding-right: 6px;
+  padding-left: 6px;
+  background: rgba(240, 242, 233, 0.045);
+}
+
+.ledger-list > li:focus-visible {
+  outline: 1px solid rgba(237, 237, 237, 0.7);
+  outline-offset: -1px;
 }
 
 .ledger-entry-heading {
@@ -1402,8 +1416,31 @@ body {
   backdrop-filter: blur(18px) saturate(90%);
 }
 
+.ledger-disclosure-summary {
+  padding: 14px 0 10px;
+  color: #737373;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  list-style: none;
+  user-select: none;
+}
+
+.ledger-disclosure-summary::-webkit-details-marker {
+  display: none;
+}
+
+.session-ledger-disclosure:not([open]) .ledger-disclosure-summary {
+  padding-bottom: 14px;
+}
+
+.ledger-disclosure-summary:focus-visible {
+  color: #ededed;
+  outline: none;
+}
+
 .ledger-header {
-  padding: 12px 0 9px;
+  padding: 2px 0 9px;
 }
 
 .ledger-total {
