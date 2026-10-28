@@ -244,7 +244,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     ledgerEmpty.hidden = history.length > 0;
     resetButton.disabled = history.length === 0;
     ledgerList.replaceChildren();
-    history.slice(-3).reverse().forEach((entry) => {
+    history.slice().reverse().forEach((entry) => {
       const item = document.createElement("li");
       item.dataset.sessionId = String(entry.id);
       item.tabIndex = 0;

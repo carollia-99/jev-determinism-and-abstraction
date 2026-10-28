@@ -1,38 +1,52 @@
-# Jev × canvas-sketch decision canvas
+# Make abstract art programmatically with natural language
 
-An expressive generative-art system in which one natural-language prompt becomes a visual thesis followed by only the relevant typed Jev decisions:
+[Live demo](https://jev-abstract-art.vercel.app) · Built with [canvas-sketch](https://github.com/mattdesl/canvas-sketch), Jev, Vercel AI Gateway, and Vercel Sandbox.
 
-```text
-natural-language prompt
-  → Vercel AI Gateway
-  → TypeSafe AI Jev
-  → 17-question visual thesis and relevance router (choice + score)
-  → optional confidence clarification for uncertain color, coverage, form, or field intent
-  → up to 80 relevant detail decisions
-      28 global art directions
-      13 choices × 4 visual layers when marks are relevant
-  → confidence filtering + deterministic compatibility reconciliation
-  → seeded ArtSpec JSON
-  → fixed canvas-sketch renderer
-  → animated artwork
+Enter one idea, generate it three ways, and compare the artwork, speed, tokens, and cost.
+
+## How generation works
+
+```mermaid
+flowchart LR
+    P[Prompt] --> M{Choose a path}
+
+    M --> J[Jev]
+    M --> L[LLM]
+    M --> C[Custom code]
+
+    J -->|while typing| S[Select relevant renderer fields]
+    J -->|Compose| F{Can the renderer spec express it?}
+    F -->|Yes| S
+    F -->|No| C
+
+    L --> A[Fill the renderer spec in one call]
+    S --> R[Renderer spec]
+    A --> R
+    R --> D[Seeded canvas-sketch renderer]
+
+    C --> G[Claude Sonnet 4.6 writes JavaScript]
+    G --> V[Vercel Sandbox validates and runs it]
+    V --> I[Sandbox iframe]
 ```
 
-Jev does not generate pixels or JavaScript. It selects a point in a deliberately expressive art grammar: literal gradient colors and direction, composition, palette, contrast, space, atmosphere, texture, motion, and four coordinated layers of mark-making. Explicit constraints are preserved before poetic interpretation, so “red yellow gradient” becomes literal `RED → YELLOW` Canvas color stops. The browser's fixed renderer turns that complete specification into deterministic Canvas 2D artwork.
+### How Jev evaluates a characteristic
 
-The **Populate spec** picker puts Jev alongside Claude Haiku 4.5, Claude Sonnet 4.6, GPT-5.4 Mini, and GPT-5.4. Jev asks only relevant typed questions; each conventional model fills all 80 renderer fields in one schema-validated response. None of these options generates pixels or executable JavaScript. They share the same literal-color and compatibility repair pass, prompt-derived seed, state update, and fixed renderer, so latency, token use, cost, and artwork can be compared without changing the rendering system.
+For the prompt **“a quiet blue gradient,”** Jev might return:
 
-The separate **Custom code + Sandbox** path deliberately crosses that boundary. Claude Sonnet 4.6 is fixed as the code-authoring model and writes a complete, prompt-specific Canvas 2D JavaScript program rather than selecting an ArtSpec. The server rejects imports, network and storage APIs, parent-window access, and dynamic evaluation; Vercel Sandbox then syntax-checks and smoke-executes the program in a network-isolated microVM. A time-limited static server exposes the validated artwork to a browser iframe that allows scripts but not same-origin access. The session receipt records the Sonnet generation call; Sandbox execution time is surfaced in the completion status.
+| Type | Characteristic | Probability distribution | Result |
+| --- | --- | --- | --- |
+| **Choice** | Field intent | `GRADIENT .72` · `GRADIENT_AND_MARKS .20` · `MARKS .05` · `SOLID .03` | Select `GRADIENT` with 72% confidence |
+| **Score** | Motion importance | `irrelevant .65` · `supporting .25` · `important .08` · `essential .02` | Weighted score `0.47`; 65% confidence |
 
-The same prompt receives the same seed and layout. Motion stays live, but the composition remains stable. Low-confidence optional effects fall back to restrained defaults, irrelevant categories are never asked, and incompatible combinations such as lightening blends on white are repaired before rendering. The compact decision trace shows the resulting visual choices, while the session receipt exposes exact AI Gateway cost, tokens, and latency.
+Choice uses the highest-probability option. Score uses the probability-weighted mean, here `(0×.65) + (1×.25) + (2×.08) + (3×.02) = 0.47`; the largest bucket is reported as confidence. Relevance scores below `1.5` are omitted, so this example does not ask for motion details.
 
-## Decision surface
+| Path | What it does | Best for |
+| --- | --- | --- |
+| **Jev** | Updates only the relevant renderer fields as you type. On Compose, Jev checks whether the fixed renderer is expressive enough and reroutes when it is not. | Fast, live abstract-art iteration |
+| **LLM** | Fills the complete renderer spec in one structured call, then uses the same seeded renderer as Jev. | Comparing general models on identical constraints |
+| **Custom code + Sandbox** | Generates prompt-specific JavaScript, validates and runs it in Vercel Sandbox, then displays the result in an isolated iframe. | Scenes, interaction, or behavior beyond the renderer spec |
 
-- 28 global choices: composition, focal point, symmetry, negative space, depth, literal canvas/gradient/mark colors, gradient type and direction, field and frame treatment, color harmony, contrast, saturation, texture, line character, shape language, motion, tempo, rhythm, turbulence, edge behavior, and atmosphere.
-- 52 layer choices: four layers each decide primitive, distribution, density, scale, scale variation, color role, fill, stroke, opacity, blend mode, rotation, noise, and repetition.
-- 9 relevance scores route palette, composition, marks, space, motion, texture, symmetry, atmosphere, and disorder into only the useful detail families. Literal named colors automatically make palette decisions essential.
-- Total: 17 thesis, semantic-anchor, and characteristic-relevance decisions plus a conditional subset of the 80-detail decision surface. Most prompts use two fast Jev calls; prompts with low-confidence core routing receive one small targeted clarification call before details.
-
-## Local setup
+## Run locally
 
 ```bash
 npm install
@@ -40,39 +54,16 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Add a Vercel AI Gateway key to `.env.local`:
-
-```text
-AI_GATEWAY_API_KEY=your_gateway_key_here
-# Optional server default; the UI picker overrides it per request
-COMPARISON_MODEL=anthropic/claude-sonnet-4.6
-```
-
-The key is read only by the local server middleware and the deployed Vercel Function. It is never included in the browser bundle. On Vercel, the function can use the platform-provided OIDC token instead.
-
-For local Sandbox previews, link the project and pull its Vercel environment so the SDK receives an OIDC token:
+Set `AI_GATEWAY_API_KEY` in `.env.local`. To enable local Sandbox previews, also run:
 
 ```bash
 vercel link
 vercel env pull
 ```
 
-The other two routes continue to work without local Sandbox credentials.
-
-## Verification
+## Verify
 
 ```bash
 npm test
 npm run build
 ```
-
-Useful contrast prompts:
-
-1. “green blue gradient”
-2. “a heat haze in the desert”
-3. “geometric shapes in bright day”
-4. “midnight anxiety”
-
-## Session receipts
-
-Every successful composition returns a sanitized receipt containing the resolved model, wall-clock latency, input/output/total tokens, and actual cost from `providerMetadata.gateway.cost`. Each prompt receipt shows its route or selected model plus total calls, elapsed time, and cost; the session header aggregates the same measurements across Jev, full-ArtSpec, code-generation, and Sandbox stages. Raw provider metadata never reaches the browser.
