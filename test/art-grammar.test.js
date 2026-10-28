@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ART_DECISION_COUNT, artSpecFromAnswers, buildArtQuestions, createDefaultArtSpec } from "../shared/art-grammar.js";
+import { ART_DECISION_COUNT, artSpecFromAnswers, buildArtQuestions, buildArtSpecJsonSchema, createDefaultArtSpec } from "../shared/art-grammar.js";
 
 function firstChoiceAnswers() {
   return Object.fromEntries(Object.entries(buildArtQuestions()).map(([key, question]) => {
@@ -23,5 +23,14 @@ describe("art grammar", () => {
     expect(spec.gradientStartColor).toBe("RED");
     expect(spec.gradientEndColor).toBe("RED");
     expect(spec.layers[0].primitive).toBe("DOT");
+  });
+
+  it("exposes the same grammar as one complete structured-output schema", () => {
+    const schema = buildArtSpecJsonSchema();
+    expect(schema.required).toContain("composition");
+    expect(schema.required).toContain("layers");
+    expect(schema.properties.layers.minItems).toBe(4);
+    expect(schema.properties.layers.items.required).toHaveLength(13);
+    expect(schema.properties.composition.enum).toContain("RADIAL");
   });
 });

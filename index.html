@@ -3,19 +3,20 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#090a0c" />
-    <title>Jev × Canvas — Decision Canvas</title>
+    <meta name="theme-color" content="#000000" />
+    <title>Decision Canvas — Jev × AI Gateway</title>
   </head>
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div><p class="eyebrow">JEV × CANVAS / 008</p><h1>Decision canvas</h1></div>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true">▲</span><div><h1>Decision Canvas</h1><p class="eyebrow">Jev × AI Gateway</p></div></div>
+        <p class="page-context">Model comparison</p>
         <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · indigo → black · mysterious</span></p>
       </header>
 
-      <section class="canvas-stage" aria-label="Jev-directed generative artwork">
+      <section class="canvas-stage" aria-label="AI-directed generative artwork">
         <div id="canvas-root"></div>
-        <aside class="model-trace" id="model-trace" aria-live="polite" aria-label="Jev art decision trace">
+        <aside class="model-trace" id="model-trace" aria-live="polite" aria-label="Art decision trace">
           <div class="trace-header">
             <div><p class="trace-label">Decision trace</p><p class="trace-source" data-trace-source>Default composition</p></div>
             <p class="trace-meta" data-trace-meta>Fixed seeded renderer</p>
@@ -29,32 +30,55 @@
             <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
           </dl>
           <details class="trace-code art-spec-details"><summary>View applied art spec</summary><pre><code data-art-spec></code></pre></details>
+          <button type="button" class="debugger-trigger" data-debugger-toggle aria-controls="decision-debugger" aria-expanded="false" disabled><span>Decision debugger</span><span data-debugger-trigger-meta>Run a prompt</span></button>
         </aside>
+
+        <section class="decision-debugger" id="decision-debugger" aria-label="AI decision debugger" hidden>
+          <header class="debugger-header">
+            <div><p class="debugger-eyebrow">Decision debugger</p><h2 data-debugger-title>Routing trace</h2></div>
+            <div class="debugger-actions">
+              <div class="debugger-filters" aria-label="Decision filter">
+                <button type="button" data-debug-filter="exceptions" aria-pressed="true">Exceptions</button>
+                <button type="button" data-debug-filter="all" aria-pressed="false">All decisions</button>
+              </div>
+              <button type="button" class="debugger-close" data-debugger-close aria-label="Close decision debugger">Close</button>
+            </div>
+          </header>
+          <div class="debugger-summary" data-debugger-summary></div>
+          <div class="debugger-stages" data-debugger-stages></div>
+        </section>
 
         <aside class="session-ledger" id="session-ledger" aria-live="polite" aria-label="AI session history">
           <div class="ledger-header"><div><p class="ledger-label">Session receipt</p><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p></div><button type="button" data-reset-session>Reset</button></div>
           <p class="ledger-empty" data-ledger-empty>No AI calls yet</p><ol class="ledger-list" data-ledger-list></ol>
         </aside>
-        <p class="particle-count">THESIS → UP TO 88 DECISIONS</p>
       </section>
 
       <section class="prompt-control" aria-labelledby="prompt-label">
-        <div class="prompt-heading"><p class="control-label" id="prompt-label">Describe the artwork</p><p class="prompt-hint">Jev · relevant decisions only</p></div>
-        <form id="prompt-form" novalidate>
-          <label class="sr-only" for="prompt-input">Describe the artwork to compose</label>
-          <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="A moonlit garden remembering a storm…" aria-describedby="prompt-message" />
-          <button type="submit">Compose</button>
-        </form>
+        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p><p class="prompt-hint">Jev · relevant decisions only</p></div>
+        <div class="composition-workspace">
+          <div class="composition-settings">
+            <div class="composition-mode" aria-label="Composition mode" role="group">
+              <button type="button" data-composition-mode="jev" aria-pressed="true"><span>01</span> Jev decisions</button>
+              <label class="model-picker" data-model-picker data-active="false"><span class="sr-only">Full ArtSpec model</span><select id="comparison-model" aria-label="Full ArtSpec model"></select></label>
+            </div>
+          </div>
+          <form id="prompt-form" novalidate>
+            <label class="sr-only" for="prompt-input">Describe the artwork to compose</label>
+            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="A moonlit garden remembering a storm…" aria-describedby="prompt-message" />
+            <button type="submit">Compose</button>
+          </form>
+        </div>
         <p class="prompt-message" id="prompt-message" aria-live="polite"></p>
       </section>
 
       <nav class="mode-controls" aria-label="Example art prompts">
-        <p class="control-label">Starting points</p>
+        <p class="control-label">Try a prompt</p>
         <div class="mode-list" id="example-prompts">
-          <button type="button" data-example-prompt="A moonlit garden remembering a storm"><span>01</span> Moonlit garden</button>
-          <button type="button" data-example-prompt="Electric anxiety in a crowded city at midnight"><span>02</span> Electric anxiety</button>
-          <button type="button" data-example-prompt="Quiet geometry floating in a field of warm light"><span>03</span> Quiet geometry</button>
-          <button type="button" data-example-prompt="A vast heat haze over ancient red earth"><span>04</span> Heat haze</button>
+          <button type="button" data-example-prompt="green blue gradient"><span>01</span> Green blue gradient</button>
+          <button type="button" data-example-prompt="a heat haze in the desert"><span>02</span> Desert heat haze</button>
+          <button type="button" data-example-prompt="geometric shapes in bright day"><span>03</span> Bright geometry</button>
+          <button type="button" data-example-prompt="midnight anxiety"><span>04</span> Midnight anxiety</button>
         </div>
       </nav>
     </main>

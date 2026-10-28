@@ -7,11 +7,13 @@ function notify() {
   listeners.forEach((listener) => listener(snapshot));
 }
 
-export function recordSessionRequest({ prompt, outcome, steps }) {
+export function recordSessionRequest({ prompt, outcome, steps, source = "jev", model = null }) {
   const entry = Object.freeze({
     id: nextId++,
     prompt,
     outcome,
+    source,
+    model,
     steps: Object.freeze(steps.filter(Boolean).map((step) => Object.freeze({ ...step }))),
   });
   entries = [...entries, entry];
@@ -29,11 +31,16 @@ export function getSessionTotals(history = entries) {
   const pricedSteps = steps.filter((step) => Number.isFinite(step.costUsd));
   return {
     calls: steps.length,
+    latencyMs: steps.reduce((total, step) => total + (Number.isFinite(step.latencyMs) ? step.latencyMs : 0), 0),
     tokens: knownTokenSteps.reduce((total, step) => total + step.tokens.total, 0),
     tokenizedCalls: knownTokenSteps.length,
     costUsd: pricedSteps.reduce((total, step) => total + step.costUsd, 0),
     pricedCalls: pricedSteps.length,
   };
+}
+
+export function getRequestTotals(entry) {
+  return getSessionTotals(entry ? [entry] : []);
 }
 
 export function subscribeToSessionHistory(listener) {

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   clearSessionHistory,
   getSessionHistory,
+  getRequestTotals,
   getSessionTotals,
   recordSessionRequest,
 } from "../src/session-history.js";
@@ -21,8 +22,14 @@ describe("session history", () => {
 
     expect(getSessionHistory()).toHaveLength(1);
     expect(getSessionHistory()[0].steps).toHaveLength(2);
+    expect(getRequestTotals(getSessionHistory()[0])).toMatchObject({
+      calls: 2,
+      latencyMs: 8325,
+      costUsd: 0.00251,
+    });
     expect(getSessionTotals()).toEqual({
       calls: 2,
+      latencyMs: 8325,
       tokens: 500,
       tokenizedCalls: 2,
       costUsd: 0.00251,
@@ -36,6 +43,21 @@ describe("session history", () => {
       outcome: "applied",
       steps: [{ stage: "decision", latencyMs: 110, tokens: { total: null }, costUsd: null }],
     });
-    expect(getSessionTotals()).toMatchObject({ calls: 1, tokenizedCalls: 0, pricedCalls: 0 });
+    expect(getSessionTotals()).toMatchObject({ calls: 1, latencyMs: 110, tokenizedCalls: 0, pricedCalls: 0 });
+  });
+
+  it("preserves the route and selected model on the request receipt", () => {
+    recordSessionRequest({
+      prompt: "green blue gradient",
+      source: "model-art",
+      model: "openai/gpt-5.4-mini",
+      outcome: "applied",
+      steps: [],
+    });
+
+    expect(getSessionHistory()[0]).toMatchObject({
+      source: "model-art",
+      model: "openai/gpt-5.4-mini",
+    });
   });
 });

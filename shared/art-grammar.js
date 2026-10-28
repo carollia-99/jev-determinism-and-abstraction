@@ -267,6 +267,54 @@ export function buildArtQuestions() {
   return questions;
 }
 
+function choiceSchema(question) {
+  return {
+    type: "string",
+    enum: Object.keys(question.criteria),
+    description: question.instructions,
+  };
+}
+
+export function buildArtSpecJsonSchema() {
+  const globalProperties = Object.fromEntries(
+    Object.entries(GLOBAL_ART_QUESTIONS).map(([key, question]) => [key, choiceSchema(question)]),
+  );
+  const layerProperties = Object.fromEntries(
+    Object.entries(LAYER_ART_QUESTIONS).map(([key, question]) => [key, choiceSchema(question)]),
+  );
+  const layerSchema = {
+    type: "object",
+    additionalProperties: false,
+    required: Object.keys(layerProperties),
+    properties: layerProperties,
+  };
+
+  return {
+    type: "object",
+    additionalProperties: false,
+    required: [...Object.keys(globalProperties), "layers"],
+    properties: {
+      ...globalProperties,
+      layers: {
+        type: "array",
+        minItems: ART_LAYER_COUNT,
+        maxItems: ART_LAYER_COUNT,
+        description: "Exactly four coordinated layers ordered as foundation, structure, accent, and detail.",
+        items: layerSchema,
+      },
+    },
+  };
+}
+
+export function seedFromPrompt(prompt) {
+  let hash = 2166136261;
+  for (const character of prompt) {
+    hash ^= character.charCodeAt(0);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 export function artSpecFromAnswers(answers, seed) {
   const defaults = createDefaultArtSpec();
   const globals = Object.fromEntries(

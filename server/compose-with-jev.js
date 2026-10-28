@@ -2,12 +2,15 @@ import { gateway } from "@ai-sdk/gateway";
 import { experimental_decide as decide } from "ai";
 import {
   ART_DECISION_COUNT,
+  buildArtQuestions,
+  seedFromPrompt,
 } from "../shared/art-grammar.js";
 import { createAIReceipt } from "./ai-receipt.js";
 import {
   THESIS_QUESTIONS,
   answerConfidence,
   buildRelevantArtQuestions,
+  extractExplicitColors,
   reconcileArtSpec,
   thesisFromAnswers,
 } from "./art-reconciler.js";
@@ -15,14 +18,91 @@ import {
 const DEFAULT_MODEL = "typesafe-ai/jev-1.14.0";
 const THESIS_DECISION_COUNT = Object.keys(THESIS_QUESTIONS).length;
 export const MAX_ART_DECISION_COUNT = THESIS_DECISION_COUNT + ART_DECISION_COUNT;
+const ROUTING_THRESHOLD = 1.5;
+const CORE_THESIS_CONFIDENCE = 0.55;
+const REFINABLE_THESIS_IDS = ["fieldIntent", "dominantColor", "colorCoverage", "formIntent"];
 
-function promptSeed(prompt) {
-  let hash = 2166136261;
-  for (const character of prompt) {
-    hash ^= character.charCodeAt(0);
-    hash = Math.imul(hash, 16777619);
-  }
-  return hash >>> 0;
+function roundProbability(value) {
+  return Number.isFinite(value) ? Math.round(value * 10_000) / 10_000 : null;
+}
+
+function serializeDecision(id, question, answer) {
+  let selected = null;
+  if (answer?.type === "choice") selected = answer.choice;
+  else if (answer?.type === "score") selected = roundProbability(answer.score);
+  else if (answer?.type === "boolean") selected = answer.probability >= 0.5;
+
+  const probabilities = answer?.type === "boolean"
+    ? { true: roundProbability(answer.probability), false: roundProbability(1 - answer.probability) }
+    : Object.fromEntries(Object.entries(answer?.probabilities ?? {}).map(([key, value]) => [key, roundProbability(value)]));
+
+  return {
+    id,
+    type: question.type,
+    instructions: question.instructions,
+    selected,
+    confidence: roundProbability(answerConfidence(answer)),
+    probabilities,
+  };
+}
+
+function serializeDecisions(questions, answers) {
+  return Object.entries(questions).map(([id, question]) => serializeDecision(id, question, answers[id]));
+}
+
+function selectedAnswer(answer) {
+  if (answer?.type === "choice") return answer.choice;
+  if (answer?.type === "score") return roundProbability(answer.score);
+  if (answer?.type === "boolean") return answer.probability >= 0.5;
+  return null;
+}
+
+function createRoutingTrace({ literalConstraints, thesis, questions, thesisResult, thesisAnswers, refinementQuestions, refinementResult, acceptedRefinementIds, detailResult, omitted, repairs }) {
+  const allDetailQuestionIds = Object.keys(buildArtQuestions()).filter((id) => id !== "fieldTreatment");
+  const askedQuestionIds = Object.keys(questions);
+  const asked = new Set(askedQuestionIds);
+  const skippedQuestionIds = allDetailQuestionIds.filter((id) => !asked.has(id));
+  const tier1Overrides = [
+    `fieldTreatment ← Tier 1 ${thesis.fieldIntent}`,
+    ...(!thesis.useMotion ? ["motion ← STILL because motion relevance is below threshold"] : []),
+    ...(!thesis.useTexture ? ["texture ← CLEAN because texture relevance is below threshold"] : []),
+    ...(!thesis.useSymmetry ? ["symmetry ← NONE because symmetry relevance is below threshold"] : []),
+  ];
+
+  return {
+    constraints: literalConstraints,
+    tier1: {
+      decisions: serializeDecisions(THESIS_QUESTIONS, thesisAnswers),
+      handoff: thesis,
+      refinement: refinementResult ? {
+        threshold: CORE_THESIS_CONFIDENCE,
+        questionIds: Object.keys(refinementQuestions),
+        acceptedQuestionIds: acceptedRefinementIds,
+        initialDecisions: serializeDecisions(refinementQuestions, thesisResult.answers),
+        decisions: serializeDecisions(refinementQuestions, refinementResult.answers),
+      } : null,
+    },
+    routing: {
+      threshold: ROUTING_THRESHOLD,
+      fieldIntent: thesis.fieldIntent,
+      families: Object.entries(thesis.relevance).map(([family, score]) => ({
+        family,
+        score: roundProbability(score),
+        routed: score >= ROUTING_THRESHOLD,
+      })),
+      askedQuestionIds,
+      skippedQuestionIds,
+    },
+    tier2: {
+      decisions: serializeDecisions(questions, detailResult.answers),
+    },
+    compile: {
+      defaultedQuestionIds: skippedQuestionIds,
+      omittedQuestionIds: omitted,
+      overrides: [...tier1Overrides, ...repairs],
+      repairs,
+    },
+  };
 }
 
 export function validateComposeRequest(body) {
@@ -39,19 +119,52 @@ export async function composeArtWithJev(body, options = {}) {
   const modelId = options.modelId ?? process.env.JEV_MODEL ?? DEFAULT_MODEL;
   const model = options.model ?? gateway.decisionModel(modelId);
   const startedAt = performance.now();
+  const literalConstraints = { colors: extractExplicitColors(prompt) };
   const thesisStartedAt = performance.now();
   const thesisResult = await decideFn({
     model,
     state: {
       userPrompt: prompt,
       medium: "Abstract generative artwork rendered with Canvas 2D through canvas-sketch.",
+      literalConstraints,
       instruction:
         "Establish one coherent visual thesis. Preserve explicitly named visual properties and choose restraint when the prompt does not justify an effect.",
     },
     questions: THESIS_QUESTIONS,
   });
   const thesisLatencyMs = Math.round(performance.now() - thesisStartedAt);
-  const thesis = thesisFromAnswers(thesisResult.answers);
+  const thesisAnswers = { ...thesisResult.answers };
+  const refinableIds = REFINABLE_THESIS_IDS.filter((id) => (answerConfidence(thesisAnswers[id]) ?? 0) < CORE_THESIS_CONFIDENCE);
+  const refinementQuestions = Object.fromEntries(refinableIds.map((id) => [id, THESIS_QUESTIONS[id]]));
+  let refinementResult = null;
+  let refinementLatencyMs = 0;
+  const acceptedRefinementIds = [];
+  if (refinableIds.length) {
+    const refinementStartedAt = performance.now();
+    refinementResult = await decideFn({
+      model,
+      state: {
+        userPrompt: prompt,
+        medium: "Abstract generative artwork rendered with Canvas 2D through canvas-sketch.",
+        literalConstraints,
+        previousAnswers: Object.fromEntries(refinableIds.map((id) => [id, {
+          selected: selectedAnswer(thesisAnswers[id]),
+          confidence: roundProbability(answerConfidence(thesisAnswers[id])),
+        }])),
+        instruction:
+          "Re-evaluate only these uncertain core visual decisions. Favor the interpretation that makes the prompt immediately recognizable in rendered pixels, especially dominant canvas color, coverage, and mark language.",
+      },
+      questions: refinementQuestions,
+    });
+    refinementLatencyMs = Math.round(performance.now() - refinementStartedAt);
+    for (const id of refinableIds) {
+      if ((answerConfidence(refinementResult.answers[id]) ?? 0) > (answerConfidence(thesisAnswers[id]) ?? 0)) {
+        thesisAnswers[id] = refinementResult.answers[id];
+        acceptedRefinementIds.push(id);
+      }
+    }
+  }
+  const thesis = thesisFromAnswers(thesisAnswers, literalConstraints);
   const questions = buildRelevantArtQuestions(thesis);
 
   const detailStartedAt = performance.now();
@@ -61,6 +174,7 @@ export async function composeArtWithJev(body, options = {}) {
       userPrompt: prompt,
       medium: "Abstract generative artwork rendered with Canvas 2D through canvas-sketch.",
       visualThesis: thesis,
+      literalConstraints,
       instruction:
         "Make only the requested relevant decisions. Preserve literal constraints before interpreting mood: named colors map to matching literal choices in mention order. Coordinate every answer with the supplied visual thesis.",
     },
@@ -72,9 +186,9 @@ export async function composeArtWithJev(body, options = {}) {
     prompt,
     thesis,
     answers: result.answers,
-    seed: promptSeed(prompt),
+    seed: seedFromPrompt(prompt),
   });
-  const allAnswers = [...Object.values(thesisResult.answers), ...Object.values(result.answers)];
+  const allAnswers = [...Object.values(thesisAnswers), ...Object.values(result.answers)];
   const confidences = allAnswers.map(answerConfidence).filter(Number.isFinite);
   const averageConfidence =
     confidences.length > 0 ? confidences.reduce((sum, value) => sum + value, 0) / confidences.length : null;
@@ -85,8 +199,22 @@ export async function composeArtWithJev(body, options = {}) {
   const appliedDecisionCount = decisionCount - omitted.length;
   const receipts = [
     createAIReceipt(thesisResult, { model: thesisResult.response?.modelId ?? resolvedModel, latencyMs: thesisLatencyMs, stage: "thesis" }),
+    ...(refinementResult ? [createAIReceipt(refinementResult, { model: refinementResult.response?.modelId ?? resolvedModel, latencyMs: refinementLatencyMs, stage: "thesis-refinement" })] : []),
     createAIReceipt(result, { model: resolvedModel, latencyMs: detailLatencyMs, stage: "composition" }),
   ];
+  const trace = createRoutingTrace({
+    literalConstraints,
+    thesis,
+    questions,
+    thesisResult,
+    thesisAnswers,
+    refinementQuestions,
+    refinementResult,
+    acceptedRefinementIds,
+    detailResult: result,
+    omitted,
+    repairs,
+  });
 
   return {
     source: "jev-art",
@@ -99,6 +227,7 @@ export async function composeArtWithJev(body, options = {}) {
     thesis,
     omitted,
     repairs,
+    trace,
     spec,
     highlights: {
       composition: { choice: spec.composition, confidence: answerConfidence(result.answers.composition) },
@@ -111,14 +240,14 @@ export async function composeArtWithJev(body, options = {}) {
           : Math.min(answerConfidence(result.answers.gradientStartColor) ?? 0, answerConfidence(result.answers.gradientEndColor) ?? 0),
       },
       marks: spec.fieldTreatment === "GRADIENT" || spec.fieldTreatment === "SOLID"
-        ? { choice: "OMITTED", confidence: answerConfidence(thesisResult.answers.fieldIntent) }
+        ? { choice: "OMITTED", confidence: answerConfidence(thesisAnswers.fieldIntent) }
         : { choice: spec.layers[2].primitive, confidence: answerConfidence(result.answers.layer3_primitive) },
       space: { choice: spec.negativeSpace, confidence: answerConfidence(result.answers.negativeSpace) },
       motion: spec.motion === "STILL" && !thesis.useMotion
-        ? { choice: "OMITTED", confidence: answerConfidence(thesisResult.answers.useMotion) }
+        ? { choice: "OMITTED", confidence: answerConfidence(thesisAnswers.motionImportance) }
         : { choice: spec.motion, confidence: answerConfidence(result.answers.motion) },
     },
-    receipt: receipts[1],
+    receipt: receipts.at(-1),
     receipts,
   };
 }

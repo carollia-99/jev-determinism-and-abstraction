@@ -7,7 +7,22 @@ describe("composition client", () => {
     const result = await requestArtComposition("quiet geometry", fetchFn);
     expect(result.decisionCount).toBe(80);
     expect(fetchFn).toHaveBeenCalledWith("/api/compose-art", expect.objectContaining({ method: "POST" }));
-    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ prompt: "quiet geometry" });
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({ prompt: "quiet geometry", mode: "jev" });
+  });
+
+  it("selects the full-model composition route", async () => {
+    const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ mode: "model" }) }));
+    const result = await requestArtComposition(
+      "quiet geometry",
+      { mode: "model", model: "openai/gpt-5.4-mini" },
+      fetchFn,
+    );
+    expect(result.mode).toBe("model");
+    expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
+      prompt: "quiet geometry",
+      mode: "model",
+      model: "openai/gpt-5.4-mini",
+    });
   });
 
   it("preserves structured server errors", async () => {

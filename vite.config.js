@@ -1,7 +1,7 @@
 import { defineConfig, loadEnv } from "vite";
 import { createInterpretResponse } from "./server/interpret-with-jev.js";
 import { createCapabilityResponse } from "./server/generate-capability.js";
-import { createComposeResponse } from "./server/compose-with-jev.js";
+import { createComposeResponse } from "./server/compose-art.js";
 
 function readJsonBody(request) {
   return new Promise((resolve, reject) => {
@@ -76,7 +76,7 @@ function localInterpretApi() {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
-  for (const name of ["AI_GATEWAY_API_KEY", "VERCEL_OIDC_TOKEN", "JEV_MODEL", "CAPABILITY_MODEL"]) {
+  for (const name of ["AI_GATEWAY_API_KEY", "VERCEL_OIDC_TOKEN", "JEV_MODEL", "CAPABILITY_MODEL", "COMPARISON_MODEL"]) {
     if (!process.env[name] && env[name]) process.env[name] = env[name];
   }
 
