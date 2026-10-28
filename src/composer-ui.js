@@ -405,7 +405,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     trace.dataset.status = "complete";
     trace.dataset.source = isModelComposition ? "model-art" : "jev-art";
     traceSummaryLabel.textContent = "Decision surface";
-    artSpecSummary.textContent = "View art spec";
+    artSpecSummary.textContent = "View render spec";
     traceSource.textContent = autoRoute?.selected === "POPULATE_SPEC" ? "Jev · Populate spec" : source;
     traceMeta.textContent = latencyMs == null ? model : `${model} · ${latencyMs} ms`;
     traceMeta.title = latencyMs == null
