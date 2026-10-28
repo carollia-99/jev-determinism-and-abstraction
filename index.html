@@ -4,14 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <title>Make abstract art programmatically with natural language</title>
+    <title>Jev as an artist: a playground</title>
   </head>
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>Make abstract art programmatically with natural language</h1><button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button></div></div>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>Jev as an artist: a playground</h1></div></div>
         <div class="header-actions">
           <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">composition: flow · cyan → yellow · joyful</span></p>
+          <a class="header-utility github-link" href="https://github.com/carollia-99/jev-determinism-and-abstraction" target="_blank" rel="noreferrer" aria-label="View project on GitHub" title="View project on GitHub"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2C6.48 2 2 6.58 2 12.23c0 4.52 2.87 8.35 6.84 9.71.5.1.68-.22.68-.49 0-.24-.01-1.05-.01-1.91-2.78.62-3.37-1.21-3.37-1.21-.45-1.18-1.11-1.49-1.11-1.49-.91-.64.07-.63.07-.63 1 .08 1.53 1.06 1.53 1.06.9 1.57 2.35 1.12 2.92.85.09-.66.35-1.12.64-1.37-2.22-.26-4.56-1.14-4.56-5.06 0-1.12.39-2.03 1.03-2.75-.1-.26-.45-1.3.1-2.71 0 0 .84-.27 2.75 1.05A9.35 9.35 0 0 1 12 6.93c.85 0 1.7.12 2.5.35 1.91-1.32 2.75-1.05 2.75-1.05.55 1.41.2 2.45.1 2.71.64.72 1.03 1.63 1.03 2.75 0 3.93-2.34 4.8-4.57 5.05.36.32.68.94.68 1.9 0 1.37-.01 2.47-.01 2.81 0 .27.18.59.69.49A10.24 10.24 0 0 0 22 12.23C22 6.58 17.52 2 12 2Z"/></svg></a>
+          <button type="button" class="header-utility how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works" title="How it works">?</button>
         </div>
       </header>
 
@@ -21,12 +23,12 @@
             <div><p class="how-kicker">Guide</p><h2 id="how-title">How it works</h2></div>
             <button type="button" class="how-close" data-how-close aria-label="Close how it works window">Close</button>
           </header>
-          <p class="how-intro" id="how-intro">This project turns natural language into art through four generation paths, so you can compare fidelity, speed, cost, and how much of the process remains programmatic:</p>
+          <p class="how-intro" id="how-intro">This playground lets you create and download abstract creations, with a focus on programmatic generation via <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> to compare fidelity, speed, and cost across models. Built to showcase Jev’s speed: turning natural language into abstract art through parallel, structured decisions.</p>
           <div class="how-routes" aria-label="Composition paths">
             <section><p>Jev (fastest, live)</p><strong>Selective decision routing</strong><span>Updates the fixed renderer as you type. Jev identifies the important parts, such as palette, composition, marks, space, and motion, and routes the relevant choices across 80+ typed characteristics. Select Compose to also check whether a prompt should be handed to custom code.</span></section>
             <section><p>Other models</p><strong>Complete spec in one call</strong><span>Fills every field in the renderer spec at once, without Jev’s selective routing. This provides a direct baseline for comparing the result, cost, and speed.</span></section>
             <section><p>Custom code + sandbox (most expressive)</p><strong>Beyond the fixed spec</strong><span>When prefilling the renderer spec is not expressive enough, Claude Sonnet 4.6 writes custom JavaScript and runs it in Vercel Sandbox.</span></section>
-            <section><p>Image generation</p><strong>Direct pixels</strong><span>An image model renders the prompt directly. Unlike the other paths, this result is not produced by the <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> renderer.</span></section>
+            <section><p>Image generation</p><strong>Prompt-to-image</strong><span>An image model renders the prompt directly. Unlike the other paths, this result is not produced by the <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> renderer.</span></section>
           </div>
           <footer class="how-dialog-footer"><button type="button" data-how-close>Start composing</button></footer>
         </div>
@@ -67,10 +69,10 @@
 
         <aside class="session-ledger" id="session-ledger" aria-live="polite" aria-label="AI session history">
           <details class="session-ledger-disclosure" open>
-            <summary class="ledger-disclosure-summary">Session receipt</summary>
+            <summary class="ledger-disclosure-summary">Run history <span>· Vercel AI Gateway</span></summary>
             <div class="ledger-disclosure-body">
               <div class="ledger-header"><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p><button type="button" data-reset-session>Reset</button></div>
-              <p class="ledger-empty" data-ledger-empty>No AI Gateway calls yet</p><ol class="ledger-list" data-ledger-list></ol>
+              <p class="ledger-empty" data-ledger-empty>No AI Gateway calls yet</p><p class="ledger-help" data-ledger-help hidden>Select a run to restore its artwork.</p><ol class="ledger-list" data-ledger-list></ol>
             </div>
           </details>
         </aside>
@@ -78,18 +80,18 @@
       </section>
 
       <section class="prompt-control" aria-labelledby="prompt-label">
-        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p><p class="prompt-description">Jev will route prompts that can't be properly expressed via static args to be generated via custom code.</p></div>
+        <div class="prompt-heading"><p class="control-label" id="prompt-label">Prompt</p></div>
         <div class="composition-workspace">
           <div class="composition-settings">
             <div class="composition-route-group">
               <div class="composition-route-heading">
                 <p class="composition-route-label">Populate spec with discrete decisions</p>
               </div>
-              <label class="model-picker route-control" data-model-picker data-active="true"><span class="sr-only">Model used to populate the art spec</span><select id="comparison-model" aria-label="Model used to populate the art spec" aria-describedby="populate-spec-tooltip"></select><span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">The model populates the renderer spec directly, with characteristics such as primaryColor and texture.</span></label>
+              <label class="model-picker route-control" data-model-picker data-active="true"><span class="sr-only">Model used to populate the art spec</span><select id="comparison-model" aria-label="Model used to populate the art spec" aria-describedby="populate-spec-tooltip"></select><span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">The model populates the renderer spec directly, with characteristics such as primaryColor and texture. Prompts that can't be properly expressed via static args in the render function will be automatically routed to custom code.</span></label>
             </div>
             <div class="composition-route-group composition-route-group-code">
               <div class="composition-route-heading">
-                <p class="composition-route-label">Custom code</p>
+                <p class="composition-route-label">Custom Javascript code</p>
               </div>
               <div class="route-control"><button type="button" class="code-route-button" data-composition-mode="code" aria-pressed="false" aria-describedby="custom-code-tooltip">Custom code + sandbox (most expressive)</button><span class="route-tooltip" id="custom-code-tooltip" role="tooltip">The model (Claude Sonnet 4.6) writes custom JavaScript, which runs in a sandbox and renders in an iframe.</span></div>
             </div>
@@ -102,7 +104,7 @@
           </div>
           <form id="prompt-form" novalidate>
             <label class="sr-only" for="prompt-input">Describe the artwork to compose</label>
-            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="yellow blue gradient" aria-describedby="prompt-message" />
+            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="Describe a visual idea, e.g. yellow blue gradient" aria-describedby="prompt-message" />
             <button type="submit">Compose</button>
           </form>
         </div>

@@ -149,6 +149,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   const traceRows = new Map([...trace.querySelectorAll("[data-trace-dimension]")].map((row) => [row.dataset.traceDimension, row]));
   const ledgerTotal = sessionLedger.querySelector("[data-ledger-total]");
   const ledgerEmpty = sessionLedger.querySelector("[data-ledger-empty]");
+  const ledgerHelp = sessionLedger.querySelector("[data-ledger-help]");
   const ledgerList = sessionLedger.querySelector("[data-ledger-list]");
   const resetButton = sessionLedger.querySelector("[data-reset-session]");
   let compositionMode = "jev";
@@ -543,6 +544,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     const tokens = totals.tokenizedCalls > 0 ? `${totals.tokens.toLocaleString()} tokens` : "tokens —";
     ledgerTotal.textContent = `${totals.calls} ${totals.calls === 1 ? "call" : "calls"} · ${formatDuration(totals.latencyMs)} · ${tokens} · ${cost}`;
     ledgerEmpty.hidden = history.length > 0;
+    ledgerHelp.hidden = history.length === 0;
     resetButton.disabled = history.length === 0;
     ledgerList.replaceChildren();
     history.slice().reverse().forEach((entry) => {
@@ -565,7 +567,13 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         : entry.source === "model-art" || entry.source === "model"
           ? comparisonModelLabel(entry.model)
           : "Jev";
-      heading.append(prompt, outcome);
+      const headingMeta = document.createElement("span");
+      headingMeta.className = "ledger-entry-heading-meta";
+      const restore = document.createElement("span");
+      restore.className = "ledger-restore";
+      restore.textContent = "Restore →";
+      headingMeta.append(outcome, restore);
+      heading.append(prompt, headingMeta);
       const requestTotals = getRequestTotals(entry);
       const requestSummary = document.createElement("div");
       requestSummary.className = "ledger-entry-summary";

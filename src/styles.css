@@ -1014,7 +1014,7 @@ body {
   gap: 14px;
 }
 
-.how-trigger,
+.header-utility,
 .how-close {
   color: #a1a1a1;
   background: transparent;
@@ -1023,26 +1023,36 @@ body {
   transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
 }
 
-.how-trigger {
+.header-utility {
   display: grid;
-  width: 18px;
-  height: 18px;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
   padding: 0;
-  border-radius: 50%;
-  font-family: Georgia, serif;
-  font-size: 10px;
-  font-weight: 600;
+  border-radius: 0;
   place-items: center;
+  text-decoration: none;
 }
 
-.how-trigger:hover,
+.github-link svg {
+  width: 16px;
+  height: 16px;
+}
+
+.how-trigger {
+  font-family: Georgia, serif;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.header-utility:hover,
 .how-close:hover {
   color: #ededed;
   background: #111;
   border-color: #666;
 }
 
-.how-trigger:focus-visible,
+.header-utility:focus-visible,
 .how-close:focus-visible,
 .how-dialog-footer button:focus-visible {
   outline: 2px solid #fff;
@@ -1670,10 +1680,17 @@ body {
   padding: 14px 0 10px;
   color: #737373;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 9px;
   font-weight: 500;
   list-style: none;
   user-select: none;
+}
+
+.ledger-disclosure-summary span {
+  margin-left: 3px;
+  color: #555;
+  font-size: 8px;
+  font-weight: 450;
 }
 
 .ledger-disclosure-summary::-webkit-details-marker {
@@ -1716,6 +1733,13 @@ body {
   text-transform: none;
 }
 
+.ledger-help {
+  margin: 0;
+  padding: 0 0 8px;
+  color: #666;
+  font-size: 10px;
+}
+
 .ledger-list > li {
   border-color: var(--hairline);
 }
@@ -1734,6 +1758,27 @@ body {
   font-weight: 500;
   letter-spacing: 0;
   text-transform: none;
+}
+
+.ledger-entry-heading-meta {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.ledger-restore {
+  color: #a1a1a1;
+  font-size: 9px;
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 150ms ease, transform 150ms ease;
+}
+
+.ledger-list > li:hover .ledger-restore,
+.ledger-list > li:focus-visible .ledger-restore {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 .ledger-steps li {
@@ -2055,7 +2100,7 @@ body {
   max-width: 290px;
   margin: 5px 0 0;
   color: #666;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.45;
 }
 
