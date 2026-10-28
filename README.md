@@ -2,7 +2,7 @@
 
 [Live demo](https://jev-abstract-art.vercel.app) · Built with [canvas-sketch](https://github.com/mattdesl/canvas-sketch), Jev, Vercel AI Gateway, and Vercel Sandbox.
 
-Enter one idea, generate it three ways, and compare the artwork, speed, tokens, and cost.
+Generate an abstract art idea in three ways, and compare the fidelity, speed, tokens, and cost.
 
 ## How generation works
 
