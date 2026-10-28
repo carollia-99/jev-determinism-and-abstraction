@@ -30,7 +30,7 @@ export async function createComposeResponse(body) {
     if (isMissingGatewayAuth(error)) {
       return { status: 503, body: { error: "AI Gateway authentication is not configured.", code: "MISSING_AI_GATEWAY_AUTH" } };
     }
-    const routeLabel = mode === "model" ? "Comparison model" : mode === "code" ? "Code + Sandbox" : "Jev";
+    const routeLabel = mode === "model" ? "Comparison model" : mode === "code" ? "Custom code + Sandbox" : "Jev";
     console.error(`${routeLabel} art composition failed`, error);
     return {
       status: 502,

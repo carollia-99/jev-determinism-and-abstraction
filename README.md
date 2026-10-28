@@ -19,9 +19,9 @@ natural-language prompt
 
 Jev does not generate pixels or JavaScript. It selects a point in a deliberately expressive art grammar: literal gradient colors and direction, composition, palette, contrast, space, atmosphere, texture, motion, and four coordinated layers of mark-making. Explicit constraints are preserved before poetic interpretation, so “red yellow gradient” becomes literal `RED → YELLOW` Canvas color stops. The browser's fixed renderer turns that complete specification into deterministic Canvas 2D artwork.
 
-The prompt UI also has a **Full ArtSpec model** comparison path. “Full ArtSpec” means that one conventional language-model call fills every one of the renderer's 80 typed fields in a single schema-validated response; the model still does not generate pixels or executable JavaScript. The picker can route that call through AI Gateway to Claude Haiku 4.5, Claude Sonnet 4.6, GPT-5.4 Mini, or GPT-5.4. Both paths use the same literal-color and compatibility repair pass, prompt-derived seed, state update, and fixed renderer, so their latency, token use, cost, and artwork can be compared without changing the rendering system.
+The **Populate spec** picker puts Jev alongside Claude Haiku 4.5, Claude Sonnet 4.6, GPT-5.4 Mini, and GPT-5.4. Jev asks only relevant typed questions; each conventional model fills all 80 renderer fields in one schema-validated response. None of these options generates pixels or executable JavaScript. They share the same literal-color and compatibility repair pass, prompt-derived seed, state update, and fixed renderer, so latency, token use, cost, and artwork can be compared without changing the rendering system.
 
-The third **Code + Sandbox** path deliberately crosses that boundary. The model selected in the same picker writes a complete, prompt-specific Canvas 2D JavaScript program rather than selecting an ArtSpec. The server rejects imports, network and storage APIs, parent-window access, and dynamic evaluation; Vercel Sandbox then syntax-checks and smoke-executes the program in a network-isolated microVM. A time-limited static server exposes the validated artwork to a browser iframe that allows scripts but not same-origin access. The session receipt separates model generation from Sandbox execution. Sandbox execution time is surfaced, but no Sandbox dollar cost is invented when the API does not report one.
+The separate **Custom code + Sandbox** path deliberately crosses that boundary. Claude Sonnet 4.6 is fixed as the code-authoring model and writes a complete, prompt-specific Canvas 2D JavaScript program rather than selecting an ArtSpec. The server rejects imports, network and storage APIs, parent-window access, and dynamic evaluation; Vercel Sandbox then syntax-checks and smoke-executes the program in a network-isolated microVM. A time-limited static server exposes the validated artwork to a browser iframe that allows scripts but not same-origin access. The session receipt records the Sonnet generation call; Sandbox execution time is surfaced in the completion status.
 
 The same prompt receives the same seed and layout. Motion stays live, but the composition remains stable. Low-confidence optional effects fall back to restrained defaults, irrelevant categories are never asked, and incompatible combinations such as lightening blends on white are repaired before rendering. The compact decision trace shows the resulting visual choices, while the session receipt exposes exact AI Gateway cost, tokens, and latency.
 
@@ -46,8 +46,6 @@ Add a Vercel AI Gateway key to `.env.local`:
 AI_GATEWAY_API_KEY=your_gateway_key_here
 # Optional server default; the UI picker overrides it per request
 COMPARISON_MODEL=anthropic/claude-sonnet-4.6
-# Optional model for the Code + Sandbox route
-SANDBOX_CODE_MODEL=anthropic/claude-sonnet-4.6
 ```
 
 The key is read only by the local server middleware and the deployed Vercel Function. It is never included in the browser bundle. On Vercel, the function can use the platform-provided OIDC token instead.

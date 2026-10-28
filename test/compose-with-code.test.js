@@ -37,7 +37,7 @@ describe("code and Sandbox composition", () => {
     const generateTextFn = vi.fn(async () => generatedResult());
     const { sandbox, SandboxClass } = sandboxHarness();
     const result = await composeArtWithCode(
-      { prompt: "living stained glass", model: "anthropic/claude-sonnet-4.6" },
+      { prompt: "living stained glass", model: "openai/gpt-5.4" },
       { generateTextFn, SandboxClass, sandboxTimeoutMs: 60_000, fetchFn: async () => ({ ok: true, status: 200 }) },
     );
 
@@ -53,6 +53,7 @@ describe("code and Sandbox composition", () => {
       expect.objectContaining({ stage: "model-code", model: "anthropic/claude-sonnet-4.6", costUsd: 0.0012 }),
       expect.objectContaining({ stage: "sandbox-execution", model: "vercel/sandbox", costUsd: null }),
     ]);
+    expect(generateTextFn).toHaveBeenCalledWith(expect.objectContaining({ model: "anthropic/claude-sonnet-4.6" }));
     expect(SandboxClass.create).toHaveBeenCalledWith(expect.objectContaining({
       networkPolicy: "deny-all",
       persistent: false,

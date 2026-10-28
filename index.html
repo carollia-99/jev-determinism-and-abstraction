@@ -9,10 +9,9 @@
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><h1>A canvas for your model</h1></div>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div class="brand-title"><h1>A canvas for your model</h1><button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button></div></div>
         <div class="header-actions">
           <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · cyan → yellow · joyful</span></p>
-          <button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button>
         </div>
       </header>
 
@@ -31,7 +30,7 @@
           <div class="how-routes" aria-label="Composition paths">
             <section><p>Jev</p><strong>Relevant typed decisions</strong><span>Fastest route through the fixed renderer.</span></section>
             <section><p>Other models</p><strong>Complete structured spec</strong><span>One model call fills the same renderer controls.</span></section>
-            <section><p>Code + Sandbox</p><strong>Custom JavaScript</strong><span>The model writes a Canvas program that Vercel Sandbox validates before it appears in an isolated iframe.</span></section>
+            <section><p>Custom code + Sandbox</p><strong>Claude Sonnet 4.6</strong><span>Sonnet writes a Canvas program that Vercel Sandbox validates before it appears in an isolated iframe.</span></section>
           </div>
           <footer class="how-dialog-footer"><button type="button" data-how-close>Start composing</button></footer>
         </div>
@@ -55,7 +54,7 @@
                 <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
                 <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
               </dl>
-              <details class="trace-code art-spec-details"><summary>View applied art spec</summary><pre><code data-art-spec></code></pre></details>
+              <details class="trace-code art-spec-details"><summary>View art spec</summary><pre><code data-art-spec></code></pre></details>
             </div>
           </details>
         </aside>
@@ -74,21 +73,14 @@
             <div class="composition-route-group">
               <div class="composition-route-heading">
                 <p class="composition-route-label">Populate spec</p>
-                <button type="button" class="route-info" aria-label="What does Populate spec mean?" aria-describedby="populate-spec-tooltip">i</button>
-                <span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">A spec is the structured set of art controls used by the built-in renderer. Jev selects relevant fields; other models fill every field.</span>
               </div>
-              <div class="composition-mode" aria-label="Built-in art controls" role="group">
-                <button type="button" data-composition-mode="jev" aria-pressed="true"><span>01</span> Jev (fastest)</button>
-                <label class="model-picker" data-model-picker data-active="false"><span class="sr-only">Model using built-in art controls</span><select id="comparison-model" aria-label="Model using built-in art controls"></select></label>
-              </div>
+              <label class="model-picker route-control" data-model-picker data-active="true"><span class="sr-only">Model used to populate the art spec</span><select id="comparison-model" aria-label="Model used to populate the art spec" aria-describedby="populate-spec-tooltip"></select><span class="route-tooltip" id="populate-spec-tooltip" role="tooltip">A spec is the structured set of art controls used by the built-in renderer. Jev selects relevant fields; other models fill every field.</span></label>
             </div>
             <div class="composition-route-group composition-route-group-code">
               <div class="composition-route-heading">
                 <p class="composition-route-label">Custom code</p>
-                <button type="button" class="route-info" aria-label="What does Custom code mean?" aria-describedby="custom-code-tooltip">i</button>
-                <span class="route-tooltip" id="custom-code-tooltip" role="tooltip">The model writes custom JavaScript, which runs in a sandbox and renders in an iframe.</span>
               </div>
-              <button type="button" class="code-route-button" data-composition-mode="code" aria-pressed="false">Code + Sandbox</button>
+              <div class="route-control"><button type="button" class="code-route-button" data-composition-mode="code" aria-pressed="false" aria-describedby="custom-code-tooltip">Custom code + sandbox (most expressive)</button><span class="route-tooltip" id="custom-code-tooltip" role="tooltip">The model writes custom JavaScript, which runs in a sandbox and renders in an iframe.</span></div>
             </div>
           </div>
           <form id="prompt-form" novalidate>

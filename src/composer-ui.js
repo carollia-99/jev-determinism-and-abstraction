@@ -2,7 +2,7 @@ import { getArtSpec, resetArtSpec, subscribeToArtSpec, updateArtSpec } from "./a
 import { requestArtComposition } from "./composition-client.js";
 import { clearSessionHistory, getRequestTotals, getSessionHistory, getSessionTotals, recordSessionRequest, subscribeToSessionHistory } from "./session-history.js";
 import { ART_DECISION_COUNT } from "../shared/art-grammar.js";
-import { COMPARISON_MODELS, DEFAULT_COMPARISON_MODEL, comparisonModelLabel } from "../shared/comparison-models.js";
+import { COMPARISON_MODELS, comparisonModelLabel } from "../shared/comparison-models.js";
 
 const DIMENSIONS = ["composition", "palette", "marks", "space", "motion"];
 const MAX_DECISION_COUNT = ART_DECISION_COUNT + 17;
@@ -45,13 +45,16 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   let compositionMode = "jev";
   let lastSandboxPreview = "";
 
-  comparisonModel.replaceChildren(...COMPARISON_MODELS.map((model) => {
+  comparisonModel.replaceChildren(...[
+    { id: "jev", label: "Jev (fastest)" },
+    ...COMPARISON_MODELS,
+  ].map((model) => {
     const option = document.createElement("option");
     option.value = model.id;
     option.textContent = model.label;
     return option;
   }));
-  comparisonModel.value = DEFAULT_COMPARISON_MODEL;
+  comparisonModel.value = "jev";
 
   function renderSpec(spec) {
     status.textContent = `${titleCase(spec.composition)} · ${activePalette(spec).toLowerCase()} · ${spec.atmosphere.toLowerCase()}`;
@@ -59,14 +62,15 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   }
 
   function renderTrace({ source = "", model = "", latencyMs, decisionCount = ART_DECISION_COUNT, appliedDecisionCount = ART_DECISION_COUNT, skippedDecisionCount = 0, omittedCount = 0, averageConfidence = null, highlights = defaultHighlights(getArtSpec()) } = {}) {
+    const isModelComposition = source !== "Jev" && Boolean(model);
     trace.dataset.status = "complete";
-    trace.dataset.source = source.toLowerCase().includes("model") ? "model-art" : "jev-art";
+    trace.dataset.source = isModelComposition ? "model-art" : "jev-art";
     traceSummaryLabel.textContent = "Decision surface";
-    artSpecSummary.textContent = "View applied art spec";
+    artSpecSummary.textContent = "View art spec";
     traceSource.textContent = source;
     traceMeta.textContent = latencyMs == null ? model : `${model} · ${latencyMs} ms · ${decisionCount} asked`;
     traceVerdict.textContent = `${appliedDecisionCount} applied`;
-    traceAverage.textContent = source.toLowerCase().includes("model")
+    traceAverage.textContent = isModelComposition
       ? ""
       : skippedDecisionCount + omittedCount > 0
       ? `${skippedDecisionCount + omittedCount} omitted`
@@ -103,7 +107,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     trace.dataset.source = "sandbox-code";
     traceSummaryLabel.textContent = "Execution path";
     artSpecSummary.textContent = "View generated JavaScript";
-    traceSource.textContent = "Code + Sandbox";
+    traceSource.textContent = "Custom code + Sandbox";
     traceMeta.textContent = `${result.model} · ${result.latencyMs} ms`;
     traceVerdict.textContent = "Preview live";
     traceAverage.textContent = `${result.trace.checks.length} checks`;
@@ -128,7 +132,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       prompt.title = entry.prompt;
       const outcome = document.createElement("strong");
       outcome.textContent = entry.source === "sandbox-code"
-        ? "Code + Sandbox"
+        ? "Custom code + Sandbox"
         : entry.source === "model-art" || entry.source === "model"
           ? comparisonModelLabel(entry.model)
           : "Jev";
@@ -175,7 +179,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   function setCompositionMode(mode) {
     compositionMode = mode;
     compositionModeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.compositionMode === mode)));
-    modelPicker.dataset.active = String(mode === "model");
+    modelPicker.dataset.active = String(mode !== "code");
     const showSandbox = mode === "code" && Boolean(lastSandboxPreview);
     sandboxPreview.hidden = !showSandbox;
     canvasRoot.hidden = showSandbox;
@@ -195,7 +199,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     try {
       const result = await requestArtComposition(prompt, {
         mode: requestedMode,
-        model: requestedMode === "model" || requestedMode === "code" ? comparisonModel.value : undefined,
+        model: requestedMode === "model" ? comparisonModel.value : undefined,
       });
       if (result.mode === "code") {
         lastSandboxPreview = result.previewUrl;
@@ -211,7 +215,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       if (result.mode === "code") {
         renderCodeTrace(result);
       } else {
-        const source = result.mode === "model" ? "One-shot model · 80 fields" : "Jev";
+        const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
         renderTrace({ source, model: result.model, latencyMs: result.latencyMs, decisionCount: result.decisionCount, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights });
       }
       recordSessionRequest({
@@ -241,7 +245,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         ? "Add AI_GATEWAY_API_KEY to compose through AI Gateway."
         : error.code === "MISSING_SANDBOX_AUTH"
           ? "Link this project to Vercel and pull its environment to enable Sandbox previews."
-          : `${requestedMode === "model" ? "The comparison model" : requestedMode === "code" ? "Code + Sandbox" : "Jev"} could not compose this piece: ${error.message}`;
+          : `${requestedMode === "model" ? "The comparison model" : requestedMode === "code" ? "Custom code + Sandbox" : "Jev"} could not compose this piece: ${error.message}`;
       promptMessage.dataset.tone = "error";
     } finally {
       setPending(false);
@@ -276,7 +280,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   }
 
   function onComparisonModelActivate() {
-    if (!comparisonModel.disabled) setCompositionMode("model");
+    if (!comparisonModel.disabled) setCompositionMode(comparisonModel.value === "jev" ? "jev" : "model");
   }
 
   function onReset() {

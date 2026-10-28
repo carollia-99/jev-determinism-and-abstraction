@@ -2,7 +2,8 @@ import { Sandbox } from "@vercel/sandbox";
 import { generateText, jsonSchema, Output } from "ai";
 import { createAIReceipt } from "./ai-receipt.js";
 import { validateComposeRequest } from "./compose-with-jev.js";
-import { DEFAULT_COMPARISON_MODEL, isComparisonModel } from "../shared/comparison-models.js";
+
+const CODE_MODEL_ID = "anthropic/claude-sonnet-4.6";
 
 const PREVIEW_PORT = 4173;
 const SANDBOX_TIMEOUT_MS = 5 * 60 * 1000;
@@ -180,11 +181,7 @@ export async function composeArtWithCode(body, options = {}) {
   const { prompt } = validateComposeRequest(body);
   const generateTextFn = options.generateTextFn ?? generateText;
   const SandboxClass = options.SandboxClass ?? Sandbox;
-  const requestedModel = typeof body.model === "string" ? body.model.trim() : "";
-  if (requestedModel && !isComparisonModel(requestedModel)) {
-    throw new TypeError("The selected code model is not supported.");
-  }
-  const modelId = options.modelId ?? (requestedModel || process.env.SANDBOX_CODE_MODEL || DEFAULT_COMPARISON_MODEL);
+  const modelId = options.modelId ?? CODE_MODEL_ID;
   const startedAt = performance.now();
   const generationStartedAt = performance.now();
   const result = await generateTextFn({

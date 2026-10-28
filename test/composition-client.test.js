@@ -25,7 +25,7 @@ describe("composition client", () => {
     });
   });
 
-  it("selects the code and Sandbox route", async () => {
+  it("selects the fixed-model custom code and Sandbox route", async () => {
     const fetchFn = vi.fn(async () => ({ ok: true, json: async () => ({ mode: "code" }) }));
     const result = await requestArtComposition(
       "living stained glass",
@@ -36,7 +36,6 @@ describe("composition client", () => {
     expect(JSON.parse(fetchFn.mock.calls[0][1].body)).toEqual({
       prompt: "living stained glass",
       mode: "code",
-      model: "anthropic/claude-haiku-4.5",
     });
   });
 

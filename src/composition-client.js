@@ -5,7 +5,7 @@ export async function requestArtComposition(prompt, modeOrOptions = "jev", reque
   const mode = options.mode ?? "jev";
   const fetchFn = typeof modeOrOptions === "function" ? modeOrOptions : requestFetch;
   const body = { prompt, mode };
-  if ((mode === "model" || mode === "code") && options.model) body.model = options.model;
+  if (mode === "model" && options.model) body.model = options.model;
   const response = await fetchFn("/api/compose-art", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
