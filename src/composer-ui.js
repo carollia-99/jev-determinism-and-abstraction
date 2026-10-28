@@ -189,6 +189,9 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
 
   function renderProgress(progress) {
     if (!progress) return;
+    if (progress.stage === "route-check" && progress.status === "complete" && progress.route === "CUSTOM_CODE") {
+      setCompositionMode("code", { preserveCanvas: true });
+    }
     trace.dataset.status = "pending";
     trace.dataset.source = progress.stage?.startsWith("sandbox") || ["code-generation", "syntax-check", "runtime-check", "preview-start", "preview-ready"].includes(progress.stage)
       ? "sandbox-code"
@@ -292,10 +295,11 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     submitButton.textContent = pending ? "Composing…" : "Compose";
   }
 
-  function setCompositionMode(mode) {
+  function setCompositionMode(mode, { preserveCanvas = false } = {}) {
     compositionMode = mode;
     compositionModeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.compositionMode === mode)));
     modelPicker.dataset.active = String(mode !== "code");
+    if (preserveCanvas) return;
     const showSandbox = mode === "code" && Boolean(lastSandboxPreview);
     sandboxPreview.hidden = !showSandbox;
     canvasRoot.hidden = showSandbox;
