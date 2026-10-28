@@ -143,18 +143,16 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       requestSummary.append(requestOutcome, requestMetrics);
       const steps = document.createElement("ul");
       steps.className = "ledger-steps";
-      entry.steps.forEach((step) => {
+      entry.steps.filter((step) => step.stage !== "sandbox-execution").forEach((step) => {
         const row = document.createElement("li");
         const stage = document.createElement("span");
         stage.textContent = step.stage === "model-code"
           ? `${comparisonModelLabel(step.model)} · JavaScript`
-          : step.stage === "sandbox-execution"
-            ? "Vercel Sandbox · validation"
-            : step.stage === "thesis"
-          ? "Jev thesis"
+          : step.stage === "thesis"
+          ? "Jev · visual direction"
           : step.stage === "thesis-refinement"
-            ? "Jev clarification"
-            : step.stage === "model-composition" ? `${comparisonModelLabel(step.model)} · one-shot` : "Jev details";
+            ? "Jev · visual direction clarification"
+            : step.stage === "model-composition" ? `${comparisonModelLabel(step.model)} · one-shot` : "Jev · renderer choices";
         stage.title = step.model;
         const metrics = document.createElement("span");
         metrics.textContent = `${step.latencyMs} ms · ${formatTokens(step.tokens?.total)} · ${formatCost(step.costUsd)}`;
@@ -219,7 +217,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       recordSessionRequest({
         prompt,
         outcome: result.mode === "code" ? "preview live" : `${result.appliedDecisionCount} applied`,
-        steps: result.receipts,
+        steps: result.receipts.filter((receipt) => receipt.stage !== "sandbox-execution"),
         source: result.source,
         model: result.model,
       });

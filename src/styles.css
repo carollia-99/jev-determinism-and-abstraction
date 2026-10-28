@@ -953,25 +953,211 @@ body {
   line-height: 1.1;
 }
 
-.product-brand .eyebrow {
-  margin: 3px 0 0;
-  color: #666;
-  font-family: inherit;
-  font-size: 10px;
-  font-weight: 450;
-  letter-spacing: 0;
-  line-height: 1;
-  text-transform: none;
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
 }
 
-.page-context {
-  position: absolute;
-  left: 50%;
-  margin: 0;
+.how-trigger,
+.how-close {
   color: #a1a1a1;
+  background: transparent;
+  border: 1px solid #3a3a3a;
+  cursor: pointer;
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.how-trigger {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border-radius: 50%;
+  font-family: Georgia, serif;
   font-size: 13px;
-  font-weight: 450;
-  transform: translateX(-50%);
+  font-weight: 600;
+  place-items: center;
+}
+
+.how-trigger:hover,
+.how-close:hover {
+  color: #ededed;
+  background: #111;
+  border-color: #666;
+}
+
+.how-trigger:focus-visible,
+.how-close:focus-visible,
+.how-dialog-footer button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+
+.how-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: min(720px, calc(100svh - 32px));
+  padding: 0;
+  overflow: auto;
+  color: #ededed;
+  background: #050505;
+  border: 1px solid #333;
+  border-radius: 12px;
+  box-shadow: 0 28px 100px rgba(0, 0, 0, 0.72);
+}
+
+.how-dialog[open] {
+  animation: how-dialog-enter 220ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.how-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(8px);
+}
+
+.how-dialog-inner {
+  padding: 24px;
+}
+
+.how-dialog-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.how-kicker,
+.how-dialog h2,
+.how-dialog h3,
+.how-dialog p {
+  margin: 0;
+}
+
+.how-kicker {
+  color: #737373;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.how-dialog h2 {
+  margin-top: 5px;
+  font-size: 26px;
+  font-weight: 560;
+  letter-spacing: -0.035em;
+}
+
+.how-close {
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 6px;
+  font-size: 11px;
+}
+
+.how-intro {
+  max-width: 540px;
+  padding: 18px 0;
+  color: #a1a1a1;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.how-steps {
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--hairline);
+  list-style: none;
+}
+
+.how-steps li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--hairline);
+}
+
+.how-steps li > span {
+  padding-top: 2px;
+  color: #666;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+}
+
+.how-steps h3 {
+  font-size: 13px;
+  font-weight: 550;
+}
+
+.how-steps p {
+  max-width: 540px;
+  margin-top: 5px;
+  color: #888;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.how-routes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-bottom: 1px solid var(--hairline);
+}
+
+.how-routes section {
+  min-width: 0;
+  padding: 18px 16px 18px 0;
+}
+
+.how-routes section + section {
+  padding-left: 16px;
+  border-left: 1px solid var(--hairline);
+}
+
+.how-routes p {
+  color: #737373;
+  font-size: 10px;
+}
+
+.how-routes strong,
+.how-routes span {
+  display: block;
+}
+
+.how-routes strong {
+  margin-top: 7px;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.how-routes span {
+  margin-top: 6px;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.how-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 18px;
+}
+
+.how-dialog-footer button {
+  min-height: 36px;
+  padding: 0 14px;
+  color: #000;
+  background: #ededed;
+  border: 1px solid #ededed;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 550;
+}
+
+.how-dialog-footer button:hover {
+  background: #fff;
 }
 
 .status {
@@ -995,6 +1181,52 @@ body {
   overflow: hidden;
   background: #050505;
   border-bottom: 1px solid var(--hairline);
+}
+
+.download-art {
+  position: absolute;
+  z-index: 9;
+  right: 14px;
+  bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 0 10px;
+  color: #d4d4d4;
+  background: rgba(0, 0, 0, 0.82);
+  border: 1px solid #3a3a3a;
+  border-radius: 7px;
+  cursor: pointer;
+  font-size: 11px;
+  backdrop-filter: blur(12px);
+  transition: color 160ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.download-art svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.35;
+}
+
+.download-art:hover:not(:disabled) {
+  color: #fff;
+  background: #111;
+  border-color: #666;
+}
+
+.download-art:disabled {
+  cursor: wait;
+  opacity: 0.62;
+}
+
+.download-art:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
 }
 
 #canvas-root {
@@ -1594,6 +1826,13 @@ body {
   }
 }
 
+@keyframes how-dialog-enter {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+}
+
 @media (max-width: 760px) {
   body {
     overflow: auto;
@@ -1610,8 +1849,26 @@ body {
     padding: 0 14px;
   }
 
-  .page-context {
-    display: none;
+  .header-actions {
+    gap: 9px;
+  }
+
+  .how-dialog-inner {
+    padding: 20px;
+  }
+
+  .how-routes {
+    grid-template-columns: 1fr;
+  }
+
+  .how-routes section {
+    padding: 14px 0;
+  }
+
+  .how-routes section + section {
+    padding-left: 0;
+    border-top: 1px solid var(--hairline);
+    border-left: 0;
   }
 
   .status {
@@ -1646,6 +1903,15 @@ body {
     border-radius: 9px;
   }
 
+  .download-art {
+    right: 18px;
+    bottom: 18px;
+  }
+
+  .download-art span {
+    display: none;
+  }
+
   .ledger-list {
     max-height: 90px;
   }
@@ -1674,7 +1940,6 @@ body {
 }
 
 @media (max-width: 430px) {
-  .product-brand .eyebrow,
   .status span:last-child {
     display: none;
   }
@@ -1709,7 +1974,8 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #canvas-root {
+  #canvas-root,
+  .how-dialog[open] {
     animation: none;
   }
 }

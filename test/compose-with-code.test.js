@@ -59,6 +59,9 @@ describe("code and Sandbox composition", () => {
       ports: [4173],
     }));
     expect(sandbox.writeFiles).toHaveBeenCalledOnce();
+    expect(sandbox.writeFiles.mock.calls[0][0]).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "bridge.js", content: expect.stringContaining("decision-canvas:download") }),
+    ]));
     expect(sandbox.runCommand).toHaveBeenCalledTimes(3);
     expect(sandbox.stop).not.toHaveBeenCalled();
   });
@@ -78,6 +81,28 @@ describe("code and Sandbox composition", () => {
       { prompt: "remote art" },
       { generateTextFn: async () => generatedResult("fetch('https://example.com')"), SandboxClass },
     )).rejects.toThrow("network APIs");
+    expect(SandboxClass.create).not.toHaveBeenCalled();
+  });
+
+  it("allows ordinary geometry variables named top and parent", async () => {
+    const code = "const top = 12; const parent = { width: 20 }; const canvas = document.getElementById('art'); canvas.getContext('2d').fillRect(0, top, parent.width, 10);";
+    const { SandboxClass } = sandboxHarness();
+    await expect(composeArtWithCode(
+      { prompt: "stacked geometry" },
+      { generateTextFn: async () => generatedResult(code), SandboxClass, fetchFn: async () => ({ ok: true, status: 200 }) },
+    )).resolves.toMatchObject({ mode: "code" });
+  });
+
+  it.each([
+    "window.parent.postMessage('x', '*')",
+    "globalThis['top'].location = 'https://example.com'",
+    "parent.document.body.textContent = 'x'",
+  ])("rejects actual parent-window traversal: %s", async (code) => {
+    const { SandboxClass } = sandboxHarness();
+    await expect(composeArtWithCode(
+      { prompt: "escape frame" },
+      { generateTextFn: async () => generatedResult(code), SandboxClass },
+    )).rejects.toThrow("parent-window access");
     expect(SandboxClass.create).not.toHaveBeenCalled();
   });
 

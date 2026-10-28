@@ -4,15 +4,38 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
-    <title>Decision Canvas — Jev × AI Gateway</title>
+    <title>A canvas for your model</title>
   </head>
   <body>
     <main class="app-shell">
       <header class="masthead">
-        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><div><h1>Decision Canvas</h1><p class="eyebrow">Jev × AI Gateway</p></div></div>
-        <p class="page-context">Model comparison</p>
-        <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · indigo → black · mysterious</span></p>
+        <div class="product-brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="m13.8 10.2 5.35-5.35a2.3 2.3 0 0 1 3.25 3.25l-5.35 5.35"/><path d="m14.6 9.4 3.2 3.2"/><path d="M14.2 12.3 10 16.5"/><path d="M10.5 16c-.65-.65-1.7-.65-2.35 0-.8.8-.65 1.95-1.15 2.7-.45.7-1.35 1.05-2.4 1.15 1.8.95 4.5.85 6-.65.9-.9.8-2.3-.1-3.2Z"/></svg></span><h1>A canvas for your model</h1></div>
+        <div class="header-actions">
+          <p class="status" aria-live="polite"><span class="status-dot" aria-hidden="true"></span><span id="art-status">Flow · cyan → yellow · joyful</span></p>
+          <button type="button" class="how-trigger" data-how-open aria-label="How it works" aria-haspopup="dialog" aria-controls="how-it-works">i</button>
+        </div>
       </header>
+
+      <dialog class="how-dialog" id="how-it-works" aria-labelledby="how-title" aria-describedby="how-intro">
+        <div class="how-dialog-inner">
+          <header class="how-dialog-header">
+            <div><p class="how-kicker">Guide</p><h2 id="how-title">How it works</h2></div>
+            <button type="button" class="how-close" data-how-close aria-label="Close how it works window">Close</button>
+          </header>
+          <p class="how-intro" id="how-intro">Describe an image, choose how the model should interpret it, then compare the artwork, timing, and cost.</p>
+          <ol class="how-steps">
+            <li><span>01</span><div><h3>Choose a path</h3><p>Use Jev or another model to populate the built-in art controls. Choose Custom code when those controls are not expressive enough.</p></div></li>
+            <li><span>02</span><div><h3>Write a prompt</h3><p>Enter your own idea or start with a prompt example. Select Compose to generate the artwork.</p></div></li>
+            <li><span>03</span><div><h3>Inspect the result</h3><p>Decision trace shows the applied visual choices. Session receipt records AI Gateway calls, latency, tokens, and reported cost.</p></div></li>
+          </ol>
+          <div class="how-routes" aria-label="Composition paths">
+            <section><p>Jev</p><strong>Relevant typed decisions</strong><span>Fastest route through the fixed renderer.</span></section>
+            <section><p>Other models</p><strong>Complete structured spec</strong><span>One model call fills the same renderer controls.</span></section>
+            <section><p>Code + Sandbox</p><strong>Custom JavaScript</strong><span>The model writes a Canvas program that Vercel Sandbox validates before it appears in an isolated iframe.</span></section>
+          </div>
+          <footer class="how-dialog-footer"><button type="button" data-how-close>Start composing</button></footer>
+        </div>
+      </dialog>
 
       <section class="canvas-stage" aria-label="AI-directed generative artwork">
         <div id="canvas-root"></div>
@@ -27,7 +50,7 @@
               <div class="trace-summary"><span>Decision surface</span><span><strong data-trace-verdict>80 applied</strong><span data-trace-average>—</span></span></div>
               <dl class="trace-decisions">
                 <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>INDIGO → BLACK</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>CYAN → YELLOW</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
                 <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
                 <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
                 <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence>—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
@@ -41,6 +64,7 @@
           <div class="ledger-header"><div><p class="ledger-label">Session receipt</p><p class="ledger-total" data-ledger-total>0 calls · 0 tokens · $0.000000</p></div><button type="button" data-reset-session>Reset</button></div>
           <p class="ledger-empty" data-ledger-empty>No AI Gateway calls yet</p><ol class="ledger-list" data-ledger-list></ol>
         </aside>
+        <button type="button" class="download-art" data-download-art aria-label="Download artwork as PNG" title="Download artwork as PNG"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0 3-3m-3 3L5 7M3 13h10"/></svg><span>Download</span></button>
       </section>
 
       <section class="prompt-control" aria-labelledby="prompt-label">
@@ -69,7 +93,7 @@
           </div>
           <form id="prompt-form" novalidate>
             <label class="sr-only" for="prompt-input">Describe the artwork to compose</label>
-            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" value="green blue gradient" placeholder="Describe an artwork…" aria-describedby="prompt-message" />
+            <input id="prompt-input" name="prompt" type="text" maxlength="500" autocomplete="off" placeholder="green blue gradient" aria-describedby="prompt-message" />
             <button type="submit">Compose</button>
           </form>
         </div>

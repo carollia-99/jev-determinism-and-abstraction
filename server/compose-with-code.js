@@ -22,7 +22,7 @@ const BLOCKED_CODE_PATTERNS = [
   [/\b(?:fetch|XMLHttpRequest|WebSocket|EventSource|Worker|SharedWorker)\b/, "network APIs"],
   [/\b(?:localStorage|sessionStorage|indexedDB)\b/, "browser storage"],
   [/\bdocument\.cookie\b/, "cookies"],
-  [/\b(?:parent|top|opener)\b/, "parent-window access"],
+  [/(?:\b(?:window|globalThis|self)\s*(?:\.\s*(?:parent|top|opener)\b|\[\s*["'](?:parent|top|opener)["']\s*\])|\b(?:parent|top|opener)\s*(?:\.\s*(?:document|location|frames|postMessage)\b|\[\s*["'](?:document|location|frames|postMessage)["']\s*\]))/, "parent-window access"],
   [/\b(?:eval|Function)\s*\(/, "dynamic code evaluation"],
 ];
 
@@ -47,9 +47,21 @@ function previewHtml(title) {
   <title>${safeTitle}</title>
   <style>html,body,#art{width:100%;height:100%;margin:0;overflow:hidden;background:#050505}#art{display:block}</style>
 </head>
-<body><canvas id="art" aria-label="${safeTitle}"></canvas><script src="/sketch.js"></script></body>
+<body><canvas id="art" aria-label="${safeTitle}"></canvas><script src="/sketch.js"></script><script src="/bridge.js"></script></body>
 </html>`;
 }
+
+const BRIDGE_SOURCE = String.raw`window.addEventListener("message", (event) => {
+  const message = event.data;
+  if (message?.type !== "decision-canvas:download" || typeof message.requestId !== "string") return;
+  try {
+    const canvas = document.getElementById("art");
+    const dataUrl = canvas.toDataURL("image/png");
+    window.parent.postMessage({ type: "decision-canvas:download-result", requestId: message.requestId, dataUrl }, "*");
+  } catch (error) {
+    window.parent.postMessage({ type: "decision-canvas:download-result", requestId: message.requestId, error: error.message }, "*");
+  }
+});`;
 
 const VALIDATOR_SOURCE = String.raw`import fs from "node:fs";
 import vm from "node:vm";
@@ -115,6 +127,7 @@ const files = {
   "/": ["text/html; charset=utf-8", "index.html"],
   "/index.html": ["text/html; charset=utf-8", "index.html"],
   "/sketch.js": ["text/javascript; charset=utf-8", "sketch.js"],
+  "/bridge.js": ["text/javascript; charset=utf-8", "bridge.js"],
 };
 const csp = "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data: blob:; connect-src 'none'; media-src 'none'; font-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors *";
 http.createServer((request, response) => {
@@ -222,6 +235,7 @@ Runtime contract:
     await sandbox.writeFiles([
       { path: "index.html", content: previewHtml(title) },
       { path: "sketch.js", content: code },
+      { path: "bridge.js", content: BRIDGE_SOURCE },
       { path: "validate.mjs", content: VALIDATOR_SOURCE },
       { path: "server.mjs", content: SERVER_SOURCE },
     ]);
