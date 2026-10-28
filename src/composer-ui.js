@@ -130,6 +130,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   const canvasRoot = document.querySelector("#canvas-root");
   const sandboxPreview = document.querySelector("#sandbox-preview");
   const imagePreview = document.querySelector("#image-preview");
+  const sandboxStatus = document.querySelector("[data-sandbox-status]");
+  const sandboxStatusLabel = document.querySelector("[data-sandbox-status-label]");
   const traceSource = trace.querySelector("[data-trace-source]");
   const traceMeta = trace.querySelector("[data-trace-meta]");
   const traceVerdict = trace.querySelector("[data-trace-verdict]");
@@ -567,13 +569,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         : entry.source === "model-art" || entry.source === "model"
           ? comparisonModelLabel(entry.model)
           : "Jev";
-      const headingMeta = document.createElement("span");
-      headingMeta.className = "ledger-entry-heading-meta";
-      const restore = document.createElement("span");
-      restore.className = "ledger-restore";
-      restore.textContent = "Restore →";
-      headingMeta.append(outcome, restore);
-      heading.append(prompt, headingMeta);
+      heading.append(prompt, outcome);
       const requestTotals = getRequestTotals(entry);
       const requestSummary = document.createElement("div");
       requestSummary.className = "ledger-entry-summary";
@@ -669,6 +665,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   function clearSandboxCountdown() {
     if (sandboxCountdownTimer !== null) window.clearInterval(sandboxCountdownTimer);
     sandboxCountdownTimer = null;
+    sandboxStatus.hidden = true;
+    sandboxStatus.removeAttribute("data-state");
   }
 
   function startSandboxCountdown(result) {
@@ -676,10 +674,16 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     const expiresAt = Number.isFinite(result.expiresAt) ? result.expiresAt : Date.now() + result.expiresInMs;
     const routePrefix = result.autoRoute ? "Jev routed this prompt to custom code. " : "";
     const expirationTime = new Date(expiresAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit", second: "2-digit" });
+    sandboxStatus.hidden = false;
+    sandboxStatus.dataset.state = "live";
     const update = () => {
       const remainingSeconds = Math.max(0, Math.ceil((expiresAt - Date.now()) / 1000));
       if (remainingSeconds <= 0) {
-        clearSandboxCountdown();
+        if (sandboxCountdownTimer !== null) window.clearInterval(sandboxCountdownTimer);
+        sandboxCountdownTimer = null;
+        sandboxStatus.dataset.state = "expired";
+        sandboxStatusLabel.textContent = "EXPIRED · RECOMPOSE";
+        sandboxStatus.hidden = compositionMode !== "code" || sandboxPreview.hidden;
         promptMessage.textContent = `${result.title} preview expired. Compose again to create a new Sandbox.`;
         promptMessage.title = `The temporary Sandbox expired at ${expirationTime}.`;
         promptMessage.dataset.tone = "error";
@@ -687,6 +691,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       }
       const minutes = Math.floor(remainingSeconds / 60);
       const seconds = String(remainingSeconds % 60).padStart(2, "0");
+      sandboxStatusLabel.textContent = `LIVE · VERCEL SANDBOX · ${minutes}:${seconds}`;
       promptMessage.textContent = `${routePrefix}${result.title} is live in Vercel Sandbox · ${result.latencyMs} ms total · expires in ${minutes}:${seconds}.`;
       promptMessage.title = `Total time includes code generation, Sandbox validation, and preview startup. The isolated preview expires at ${expirationTime}.`;
     };
@@ -768,6 +773,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     const showImage = mode === "image" && Boolean(lastImagePreview);
     sandboxPreview.hidden = !showSandbox;
     imagePreview.hidden = !showImage;
+    sandboxStatus.hidden = !showSandbox;
     if (showImage) imagePreview.src = lastImagePreview;
     canvasRoot.hidden = showSandbox || showImage;
     if (!showSandbox && !showImage) renderSpec(getArtSpec());
