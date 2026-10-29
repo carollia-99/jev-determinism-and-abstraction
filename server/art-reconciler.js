@@ -293,6 +293,16 @@ function applySemanticAnchors(spec, thesis, namedColors, repairs) {
 }
 
 function applyCompatibilityRepairs(spec, namedColors, repairs) {
+  if (
+    spec.fieldTreatment === "MARKS"
+    && spec.background === spec.primaryColor
+    && spec.layers.some((layer) => layer.colorRole === "PRIMARY")
+  ) {
+    const lightMarkColors = new Set(["YELLOW", "LIME", "CYAN", "WHITE", "CREAM"]);
+    spec.background = lightMarkColors.has(spec.primaryColor) ? "BLACK" : "CREAM";
+    repairs.push(`background changed to contrasting ${spec.background.toLowerCase()} so ${spec.primaryColor.toLowerCase()} marks remain visible`);
+  }
+
   if (spec.gradientStartColor === spec.gradientEndColor && namedColors.length < 2) {
     spec.gradientEndColor = COLOR_COMPANIONS[spec.gradientStartColor][0];
     repairs.push("gradient contrast derived from its anchor color");

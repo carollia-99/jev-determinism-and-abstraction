@@ -43,6 +43,11 @@ describe("Jev art composition", () => {
     expect(result.trace.routing.threshold).toBe(1.5);
     expect(result.trace.routing.askedQuestionIds.length).toBe(result.trace.tier2.decisions.length);
     expect(result.trace.compile.overrides).toContain("fieldTreatment ← Tier 1 GRADIENT");
+    expect(result.trace.compile.provenance.length).toBeGreaterThan(80);
+    expect(result.trace.compile.provenance).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "fieldTreatment", source: "tier1" }),
+      expect.objectContaining({ path: "seed", source: "prompt-seed" }),
+    ]));
   });
 
   it("clarifies low-confidence core thesis decisions before routing details", async () => {

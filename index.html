@@ -23,11 +23,11 @@
             <div><p class="how-kicker">Guide</p><h2 id="how-title">How it works</h2></div>
             <button type="button" class="how-close" data-how-close aria-label="Close how it works window">Close</button>
           </header>
-          <p class="how-intro" id="how-intro">This playground lets you create and download abstract creations, with a focus on programmatic generation via <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> to compare fidelity, speed, and cost across models. Built to showcase how quickly and consistently Jev turns ideas into abstract art.</p>
+          <p class="how-intro" id="how-intro">This playground lets you create and download abstract art, with a focus on programmatic generation via <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> to compare fidelity, speed, and cost across models. Built to showcase how quickly and consistently Jev turns ideas into abstract art.</p>
           <div class="how-routes" aria-label="Composition paths">
-            <section><p>Jev (fastest, live)</p><strong>Selective decision routing</strong><span>Updates the fixed renderer as you type. Jev identifies the important parts, such as palette, composition, marks, space, and motion, and routes the relevant choices across 80+ typed characteristics. Select Compose to also check whether a prompt should be handed to custom code.</span></section>
-            <section><p>Other models</p><strong>Complete spec in one call</strong><span>Fills every field in the renderer spec at once, without Jev’s selective routing. This provides a direct baseline for comparing the result, cost, and speed.</span></section>
-            <section><p>Custom code + sandbox (most expressive)</p><strong>Beyond the fixed spec</strong><span>When prefilling the renderer spec is not expressive enough, Claude Sonnet 4.6 writes custom JavaScript and runs it in Vercel Sandbox.</span></section>
+            <section><p>Jev (fastest, live)</p><strong>Populates fields for render code via many discrete decisions</strong><span>Updates the fixed renderer as you type. Jev identifies the important parts, such as palette, composition, marks, space, and motion, and routes the relevant choices across 80+ typed characteristics. Select Compose to also check whether a prompt should be handed to custom code.</span></section>
+            <section><p>Other models</p><strong>Populates fields for render code via one reasoning call</strong><span>Fills every field in the renderer spec at once, without Jev’s selective routing. This provides a direct baseline for comparing the result, cost, and speed.</span></section>
+            <section><p>Custom code + sandbox (most expressive)</p><strong>Generates its own render code</strong><span>When prefilling the renderer spec is not expressive enough, Claude Sonnet 4.6 writes custom JavaScript and runs it in Vercel Sandbox.</span></section>
             <section><p>Image generation</p><strong>Prompt-to-image</strong><span>An image model renders the prompt directly. Unlike the other paths, this result is not produced by the <a href="https://github.com/mattdesl/canvas-sketch" target="_blank" rel="noreferrer">canvas-sketch</a> renderer.</span></section>
           </div>
           <footer class="how-dialog-footer"><button type="button" data-how-close>Start composing</button></footer>
@@ -49,7 +49,7 @@
               <p class="trace-route-reason" data-trace-route-reason hidden></p>
               <div class="trace-summary"><span title="The typed renderer characteristics considered for this composition.">Decision surface</span><span><strong data-trace-verdict title="Characteristics accepted and applied to the renderer.">80 applied</strong><span data-trace-average title="Additional routing detail for this composition.">—</span></span></div>
               <details class="trace-deep" data-trace-deep hidden>
-                <summary><span>View full routing trace</span><span data-trace-step-count></span></summary>
+                <summary><span>View Jev routing audit</span><span data-trace-step-count></span></summary>
                 <ol class="trace-timeline" data-trace-timeline></ol>
               </details>
               <div class="trace-decision-lists" data-trace-decision-lists hidden>
@@ -57,11 +57,11 @@
                 <details><summary><span>Omitted decisions</span><span data-trace-omitted-count></span></summary><ul data-trace-omitted-list></ul></details>
               </div>
               <dl class="trace-decisions">
-                <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>CYAN → YELLOW</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
-                <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span><span data-trace-confidence title="Confidence in this routed decision.">—</span></dd><span class="trace-meter" aria-hidden="true"><span data-trace-meter></span></span></div>
+                <div class="trace-row" data-trace-dimension="composition"><dt>Composition</dt><dd><span data-trace-choice>FLOW</span></dd></div>
+                <div class="trace-row" data-trace-dimension="palette"><dt>Colors</dt><dd><span data-trace-choice>CYAN → YELLOW</span></dd></div>
+                <div class="trace-row" data-trace-dimension="marks"><dt>Marks</dt><dd><span data-trace-choice>CIRCLE</span></dd></div>
+                <div class="trace-row" data-trace-dimension="space"><dt>Space</dt><dd><span data-trace-choice>BALANCED</span></dd></div>
+                <div class="trace-row" data-trace-dimension="motion"><dt>Motion</dt><dd><span data-trace-choice>DRIFT</span></dd></div>
               </dl>
               <details class="trace-code art-spec-details"><summary>View render spec</summary><pre><code data-art-spec></code></pre></details>
             </div>
@@ -115,7 +115,7 @@
       <nav class="mode-controls" aria-label="Example art prompts">
         <p class="control-label">Prompt examples</p>
         <div class="mode-list" id="example-prompts">
-          <button type="button" data-example-prompt="green blue gradient"><span>01</span> Green blue gradient</button>
+          <button type="button" data-example-prompt="pink circles bouncing"><span>01</span> Pink circles bouncing</button>
           <button type="button" data-example-prompt="a heat haze in the desert"><span>02</span> Desert heat haze</button>
           <button type="button" data-example-prompt="Interactive subway map where connecting lines redraw as it moves."><span>03</span> Subway map</button>
           <button type="button" data-example-prompt="geometric shapes in bright day"><span>04</span> Bright geometric shapes</button>

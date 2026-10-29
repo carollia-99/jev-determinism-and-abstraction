@@ -19,10 +19,48 @@ function decisionOutcome(decision) {
   if (decision.type === "score" && Number.isFinite(decision.selected)) {
     const score = Number(decision.selected.toFixed(2));
     const maximum = Array.isArray(decision.criteria) ? decision.criteria.length - 1 : null;
-    return `Score ${score}${maximum == null ? "" : ` / ${maximum}`} · ${confidence}`;
+    return `Score · ${score}${maximum == null ? "" : ` / ${maximum}`} · ${confidence}`;
   }
   const selected = decision.selected == null ? "Applied" : decisionLabel(decision.selected);
-  return `${selected} · ${confidence}`;
+  return `Choice · ${selected} · ${confidence}`;
+}
+
+function decisionRule(decision) {
+  const probabilities = Object.entries(decision.probabilities ?? {}).filter(([, probability]) => Number.isFinite(probability));
+  if (!probabilities.length) return null;
+  if (decision.type === "score") {
+    if (!Number.isFinite(decision.selected)) return "Score rule: Jev returned tier probabilities, but no weighted score was available for this decision.";
+    const ordered = probabilities
+      .map(([tier, probability]) => ({ tier: Number(tier), probability }))
+      .filter(({ tier }) => Number.isFinite(tier))
+      .sort((a, b) => a.tier - b.tier);
+    if (!ordered.length) return null;
+    const formula = ordered.map(({ tier, probability }) => `(${tier}×${Math.round(probability * 100)}%)`).join(" + ");
+    const maximum = Array.isArray(decision.criteria) ? decision.criteria.length - 1 : ordered.at(-1).tier;
+    return `Weighted Score: ${formula} = ${Number(decision.selected.toFixed(2))} / ${maximum}. Confidence is the largest tier probability, not the weighted score.`;
+  }
+  const selectedProbability = decision.probabilities?.[decision.selected];
+  return Number.isFinite(selectedProbability)
+    ? `Choice rule: ${decisionLabel(decision.selected)} has the highest probability at ${Math.round(selectedProbability * 100)}%, so that value is selected.`
+    : `Choice rule: the highest-probability option becomes the selected value.`;
+}
+
+function thesisDownstreamEffect(id) {
+  const effects = {
+    fieldIntent: "Direct mapping: sets fieldTreatment and structurally determines which renderer questions can be asked.",
+    dominantColor: "Compilation anchor: forces palette routing on and, when no colors are named literally, anchors primary and companion colors.",
+    colorCoverage: "Compilation constraint: a score of 1.35 or higher can promote a marks-only field into a full gradient color field.",
+    formIntent: "Routing and compilation: a specified form forces mark questions on; GEOMETRIC also constrains shapeLanguage and layer primitives.",
+    subject: "Context only: passed to the renderer-decision Jev call as part of visualThesis; it does not directly set a renderer field.",
+    warmth: "Context only: passed to the renderer-decision Jev call as visualThesis.warmth; it does not directly set a renderer field.",
+    complexity: "Context only: passed to the renderer-decision Jev call as part of visualThesis; it does not directly set a renderer field.",
+    literalness: "Context only: passed to the renderer-decision Jev call as part of visualThesis; it does not directly set a renderer field.",
+  };
+  if (effects[id]) return effects[id];
+  if (id.endsWith("Importance")) {
+    return "Routing score: this weighted score is compared with 1.5 / 3 to decide whether Jev receives that characteristic family's renderer questions.";
+  }
+  return null;
 }
 const formatCost = (value) => Number.isFinite(value) ? `$${value.toFixed(6)}` : "cost —";
 const formatTokens = (value) => Number.isFinite(value) ? `${value.toLocaleString()} tok` : "tokens —";
@@ -39,10 +77,6 @@ function defaultHighlights(spec) {
     motion: { choice: spec.motion, confidence: null },
   };
 }
-
-const traceValue = (value) => Array.isArray(value)
-  ? value.length ? value.join(", ") : "none"
-  : value && typeof value === "object" ? JSON.stringify(value) : String(value ?? "—");
 
 function createTraceList(items, className = "trace-deep-list") {
   const list = document.createElement("ul");
@@ -79,6 +113,20 @@ function createDecisionDisclosure(decision) {
     instructions.textContent = decision.instructions;
     body.append(instructions);
   }
+  const downstreamEffect = thesisDownstreamEffect(decision.id);
+  if (downstreamEffect) {
+    const impact = document.createElement("p");
+    impact.className = "trace-decision-impact";
+    impact.textContent = `Downstream: ${downstreamEffect}`;
+    body.append(impact);
+  }
+  const ruleText = decisionRule(decision);
+  if (ruleText) {
+    const rule = document.createElement("p");
+    rule.className = "trace-decision-rule";
+    rule.textContent = ruleText;
+    body.append(rule);
+  }
   const probabilities = Object.entries(decision.probabilities ?? {});
   if (probabilities.length) {
     body.append(createTraceList(probabilities
@@ -97,6 +145,42 @@ function createDecisionDisclosure(decision) {
   }
   disclosure.append(summary, body);
   return disclosure;
+}
+
+function createRouteSet(title, entries, status) {
+  const group = document.createElement("details");
+  group.className = "trace-decision-group trace-route-set";
+  const summary = document.createElement("summary");
+  const label = document.createElement("span");
+  const count = document.createElement("span");
+  label.textContent = title;
+  count.textContent = `${entries.length} questions · expand`;
+  summary.append(label, count);
+  const body = document.createElement("div");
+  body.className = "trace-route-fields";
+  if (entries.some((entry) => entry.reason)) {
+    body.append(...entries.map((entry) => {
+      const field = document.createElement("details");
+      field.className = "trace-route-field";
+      const fieldSummary = document.createElement("summary");
+      const name = document.createElement("span");
+      const result = document.createElement("span");
+      const reason = document.createElement("p");
+      name.textContent = decisionLabel(entry.id);
+      result.textContent = `${status}${entry.family ? ` · ${decisionLabel(entry.family)}` : ""}`;
+      reason.textContent = entry.reason ?? "Excluded by the routing pass.";
+      fieldSummary.append(name, result);
+      field.append(fieldSummary, reason);
+      return field;
+    }));
+  } else {
+    body.append(createTraceList(entries.map((entry) => ({
+      label: decisionLabel(entry.id),
+      value: `${status}${entry.type ? ` · ${decisionLabel(entry.type)}` : ""}`,
+    }))));
+  }
+  group.append(summary, body);
+  return group;
 }
 
 function createTraceStep(number, title, summaryText, content = [], { open = false } = {}) {
@@ -227,7 +311,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
     traceDecisionLists.hidden = false;
   }
 
-  function renderDeepTrace(decisionTrace, autoRoute) {
+  function renderDeepTrace(decisionTrace, autoRoute, spec) {
     if (!decisionTrace?.tier1?.decisions || !decisionTrace?.tier2?.decisions) {
       traceDeep.hidden = true;
       traceDeep.open = false;
@@ -278,12 +362,12 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         ]));
         return row;
       });
-      steps.push(createTraceStep(4, "Confidence refinement", `${accepted.size} improved`, comparisons));
+      steps.push(createTraceStep(4, "Core thesis recheck", `${accepted.size} improved`, comparisons));
     } else {
       const note = document.createElement("p");
       note.className = "trace-step-note";
-      note.textContent = "No core thesis choice fell below the 55% confidence threshold.";
-      steps.push(createTraceStep(4, "Confidence refinement", "Not needed", [note]));
+      note.textContent = "Field intent, dominant color, color coverage, and form intent all met the 55% confidence threshold. Importance scores are routing signals, so they are evaluated against the 1.5 / 3 routing cutoff in the next step rather than rechecked here.";
+      steps.push(createTraceStep(4, "Core thesis recheck", "Not needed", [note]));
     }
 
     const skippedByFamily = new Map();
@@ -307,21 +391,24 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       });
     };
     const familyRows = (decisionTrace.routing?.families ?? []).map((family) => {
-      const disclosure = document.createElement("details");
-      disclosure.className = "trace-family";
-      const summary = document.createElement("summary");
+      const skipped = skippedByFamily.get(family.family) ?? [];
+      const disclosure = document.createElement(skipped.length ? "details" : "div");
+      disclosure.className = skipped.length ? "trace-family" : "trace-family trace-family-static";
+      const summary = document.createElement(skipped.length ? "summary" : "div");
+      if (!skipped.length) summary.className = "trace-family-summary";
       const label = document.createElement("span");
       const result = document.createElement("span");
       label.textContent = decisionLabel(family.family);
-      result.textContent = `${Number(family.score.toFixed(2))} / 3 · ${family.routed ? "routed" : "skipped"}`;
+      const comparison = family.routed ? "≥" : "<";
+      result.textContent = `${Number(family.score.toFixed(2))} / 3 ${comparison} ${decisionTrace.routing?.threshold ?? 1.5} · ${family.routed ? "included" : "excluded"}`;
       summary.append(label, result);
-      const skipped = skippedByFamily.get(family.family) ?? [];
-      const body = document.createElement("div");
-      body.className = "trace-family-body";
-      body.append(...(skipped.length
-        ? skippedReasonContent(skipped)
-        : [createTraceList([{ label: "Renderer questions", value: family.routed ? "Included" : "No direct fields remained" }])]));
-      disclosure.append(summary, body);
+      disclosure.append(summary);
+      if (skipped.length) {
+        const body = document.createElement("div");
+        body.className = "trace-family-body";
+        body.append(...skippedReasonContent(skipped));
+        disclosure.append(body);
+      }
       return disclosure;
     });
     const structuralSkips = [...skippedByFamily.entries()]
@@ -342,7 +429,26 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       structural.append(summary, body);
       familyRows.unshift(structural);
     }
-    steps.push(createTraceStep(5, "Characteristic routing", `${decisionTrace.routing?.askedQuestionIds?.length ?? 0} asked · ${decisionTrace.routing?.skippedQuestionIds?.length ?? 0} skipped`, familyRows));
+    const tier2ById = new Map((decisionTrace.tier2.decisions ?? []).map((decision) => [decision.id, decision]));
+    const skipById = new Map((decisionTrace.routing?.skippedQuestions ?? []).map((entry) => [entry.id, entry]));
+    const includedFields = (decisionTrace.routing?.askedQuestionIds ?? []).map((id) => ({
+      id,
+      type: tier2ById.get(id)?.type ?? "choice",
+    }));
+    const excludedFields = (decisionTrace.routing?.skippedQuestionIds ?? []).map((id) => ({
+      id,
+      family: skipById.get(id)?.family,
+      reason: skipById.get(id)?.reason,
+    }));
+    const routingRule = document.createElement("p");
+    routingRule.className = "trace-step-note trace-routing-rule";
+    routingRule.textContent = `Each family score decides which renderer questions Jev receives: ${decisionTrace.routing?.threshold ?? 1.5} / 3 or higher is included. Expand the asked and skipped lists below to see every question. Score confidence describes certainty in the distribution; it is not the inclusion cutoff. Structural choices such as field intent can still skip questions when a family is relevant.`;
+    steps.push(createTraceStep(5, "Renderer question routing", `${includedFields.length} asked · ${excludedFields.length} skipped`, [
+      routingRule,
+      createRouteSet("Asked renderer questions", includedFields, "Asked"),
+      createRouteSet("Skipped renderer questions", excludedFields, "Skipped"),
+      ...familyRows,
+    ]));
 
     const decisionGroups = new Map([["Global", []], ["Foundation layer", []], ["Structure layer", []], ["Accent layer", []], ["Detail layer", []]]);
     for (const decision of decisionTrace.tier2.decisions) {
@@ -375,32 +481,32 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       createTraceList(compileItems.length ? compileItems : [{ label: "Result", value: "No overrides or repairs" }]),
     ]));
 
-    const provenance = compile.provenance ?? [];
-    const provenanceList = document.createElement("div");
-    provenanceList.className = "trace-provenance";
-    provenanceList.replaceChildren(...provenance.map((entry) => {
-      const row = document.createElement("details");
-      const summary = document.createElement("summary");
-      const path = document.createElement("code");
-      const value = document.createElement("span");
-      const source = document.createElement("span");
-      const reason = document.createElement("p");
-      path.textContent = entry.path;
-      value.textContent = traceValue(entry.value);
-      source.textContent = decisionLabel(entry.source);
-      reason.textContent = entry.reason;
-      summary.append(path, value, source);
-      row.append(summary, reason);
-      return row;
-    }));
-    steps.push(createTraceStep(8, "Final renderer spec", `${provenance.length} values with provenance`, [provenanceList]));
-
     traceTimeline.replaceChildren(...steps);
     traceStepCount.textContent = `${steps.length} steps`;
     traceDeep.hidden = false;
   }
 
-  function renderTrace({ source = "", model = "", latencyMs, appliedDecisionCount = ART_DECISION_COUNT, skippedDecisionCount = 0, omittedCount = 0, averageConfidence = null, highlights = defaultHighlights(getArtSpec()), decisionTrace = null, autoRoute = null } = {}) {
+  function renderRouteOnlyTrace(route) {
+    if (!route?.decisions?.length) {
+      traceDeep.hidden = true;
+      traceDeep.open = false;
+      traceTimeline.replaceChildren();
+      return;
+    }
+    const note = document.createElement("p");
+    note.className = "trace-step-note";
+    note.textContent = `${route.reason} Custom code is selected only when its Choice confidence reaches ${Math.round((route.threshold ?? 0.65) * 100)}%.`;
+    const routeLabel = route.route === "CUSTOM_CODE" ? "Custom code" : "Populate renderer";
+    const step = createTraceStep(1, "Jev route decision", `${routeLabel} · ${Math.round((route.confidence ?? 0) * 100)}%`, [
+      note,
+      ...route.decisions.map(createDecisionDisclosure),
+    ], { open: true });
+    traceTimeline.replaceChildren(step);
+    traceStepCount.textContent = "1 step";
+    traceDeep.hidden = false;
+  }
+
+  function renderTrace({ source = "", model = "", latencyMs, appliedDecisionCount = ART_DECISION_COUNT, skippedDecisionCount = 0, omittedCount = 0, averageConfidence = null, highlights = defaultHighlights(getArtSpec()), decisionTrace = null, autoRoute = null, spec = getArtSpec() } = {}) {
     const isModelComposition = source !== "Jev" && Boolean(model);
     trace.dataset.status = "complete";
     trace.dataset.source = isModelComposition ? "model-art" : "jev-art";
@@ -426,18 +532,11 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         ? "Questions Jev skipped because they were irrelevant to the prompt or too uncertain to apply."
         : "Average confidence across the applied Jev decisions.";
     renderDecisionLists(isModelComposition ? null : decisionTrace);
-    renderDeepTrace(isModelComposition ? null : decisionTrace, autoRoute);
+    renderDeepTrace(isModelComposition ? null : decisionTrace, autoRoute, spec);
     for (const dimension of DIMENSIONS) {
       const row = traceRows.get(dimension);
       const decision = highlights[dimension];
-      const percent = Number.isFinite(decision?.confidence) ? Math.round(decision.confidence * 100) : null;
       row.querySelector("[data-trace-choice]").textContent = decision?.choice ?? "—";
-      const confidence = row.querySelector("[data-trace-confidence]");
-      confidence.textContent = percent == null ? "—" : `${percent}%`;
-      confidence.title = percent == null
-        ? "This route does not report confidence for this decision."
-        : "Jev's confidence in this routed decision.";
-      row.querySelector("[data-trace-meter]").style.setProperty("--confidence", percent == null ? "0%" : `${percent}%`);
     }
   }
 
@@ -500,9 +599,12 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
 
   function renderCodeTrace(result) {
     traceDecisionLists.hidden = true;
-    traceDeep.hidden = true;
-    traceDeep.open = false;
-    traceTimeline.replaceChildren();
+    if (result.autoRoute && result.trace?.route) renderRouteOnlyTrace(result.trace.route);
+    else {
+      traceDeep.hidden = true;
+      traceDeep.open = false;
+      traceTimeline.replaceChildren();
+    }
     trace.dataset.status = "complete";
     trace.dataset.source = "sandbox-code";
     traceSummaryLabel.textContent = "Execution path";
@@ -623,7 +725,8 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
   function applyArtSpec(nextSpec, { morph = false } = {}) {
     const sourceCanvas = canvasRoot.querySelector("canvas:not(.art-morph-ghost)");
     const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!morph || !sourceCanvas || reduceMotion) {
+    const isAnimated = nextSpec.motion && nextSpec.motion !== "STILL";
+    if (!morph || !sourceCanvas || reduceMotion || isAnimated) {
       clearArtMorph();
       updateArtSpec(nextSpec);
       return;
@@ -744,7 +847,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
       imagePreview.hidden = true;
       canvasRoot.hidden = false;
       const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
-      renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute });
+      renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute, spec: result.spec });
       promptMessage.textContent = "Restored this session’s artwork. See Decision Trace for details.";
       promptMessage.removeAttribute("title");
     }
@@ -828,7 +931,7 @@ export function mountComposer({ promptForm, promptInput, promptMessage, status, 
         renderCodeTrace(result);
       } else {
         const source = result.mode === "model" ? comparisonModelLabel(result.model) : "Jev";
-        renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute });
+        renderTrace({ source, model: result.model, latencyMs: result.latencyMs, appliedDecisionCount: result.appliedDecisionCount, skippedDecisionCount: result.skippedDecisionCount, omittedCount: result.omitted.length, averageConfidence: result.averageConfidence, highlights: result.highlights, decisionTrace: result.trace, autoRoute: result.autoRoute, spec: result.spec });
       }
       recordSessionRequest({
         prompt,

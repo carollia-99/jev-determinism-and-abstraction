@@ -146,4 +146,30 @@ describe("art reconciliation", () => {
     expect(result.spec.layers.every((layer) => layer.blendMode === "MULTIPLY")).toBe(true);
     expect(result.repairs.length).toBeGreaterThan(1);
   });
+
+  it("keeps requested primary marks visible when Jev matches the background to them", () => {
+    const answers = choiceAnswers();
+    answers.background.choice = "GREEN";
+    answers.primaryColor.choice = "GREEN";
+    for (let index = 1; index <= 4; index += 1) {
+      answers[`layer${index}_colorRole`] = { type: "choice", choice: "PRIMARY", probabilities: { PRIMARY: 0.8 } };
+    }
+    const result = reconcileArtSpec({
+      prompt: "green circles bounce",
+      thesis: {
+        fieldIntent: "MARKS",
+        dominantColor: "GREEN",
+        colorCoverage: 1,
+        formIntent: "GEOMETRIC",
+        useMotion: true,
+        useTexture: false,
+        useSymmetry: false,
+      },
+      answers,
+      seed: 5,
+    });
+    expect(result.spec.primaryColor).toBe("GREEN");
+    expect(result.spec.background).toBe("CREAM");
+    expect(result.repairs).toContain("background changed to contrasting cream so green marks remain visible");
+  });
 });
