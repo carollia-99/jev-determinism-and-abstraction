@@ -1,8 +1,8 @@
-# Jev as an artist: a playground
+# Jev as a fast, consistent artist: a playground
 
 [Live demo](https://jev-abstract-art.vercel.app) · Built with Jev, [canvas-sketch](https://github.com/mattdesl/canvas-sketch), Vercel AI Gateway, and Vercel Sandbox.
 
-An playground built to showcase Jev’s speed and reproducibility in more abstract situations: turning natural language into art through parallel, structured decisions on how to populate a spec with 80+ characteristics. Compare four generation paths by fidelity, speed, tokens, and cost; three render programmatically either by populating a spec that runs via predecided javascript, or writing custom javascript, while AI image generation provides a direct prompt-to-image baseline.
+An abstract art playground built to showcase how quickly and consistently Jev turns ideas into abstract art through parallel, structured decisions across 80+ renderer characteristics. Compare four generation paths by fidelity, speed, tokens, and cost: two populate the same renderer spec, one generates custom JavaScript, and one provides a direct prompt-to-image baseline.
 
 ## How generation works
 
