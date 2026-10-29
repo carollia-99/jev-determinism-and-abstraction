@@ -42,7 +42,7 @@ For the prompt **“a quiet blue gradient,”** Jev might return:
 | **Choice** | Field intent | `GRADIENT .72` · `GRADIENT_AND_MARKS .20` · `MARKS .05` · `SOLID .03` | Select `GRADIENT` with 72% confidence | Use the gradient-only rendering path and omit mark-layer fields. |
 | **Score** | Motion importance | `irrelevant .65` · `supporting .25` · `important .08` · `essential .02` | Weighted score `0.47 / 3`; 65% confidence | `0.47` is below the `1.5` relevance cutoff, so omit the `motion`, `tempo`, and `rhythm` fields and keep the artwork still. |
 
-Choice uses the highest-probability option. Jev returns probabilities over the ordered Score tiers, and the score is their weighted mean: `(0×.65) + (1×.25) + (2×.08) + (3×.02) = 0.47`. This app displays the largest tier probability, `65%`, as confidence. Relevance scores below `1.5` are omitted, so this example does not ask for motion details.
+Choice uses the highest-probability option. Jev returns probabilities over the ordered Score tiers, and the score is their weighted mean: `(0×.65) + (1×.25) + (2×.08) + (3×.02) = 0.47`. This app displays the largest tier probability, `65%`, as confidence. Relevance scores below `1.5` are omitted (50% since there's 4 levels of importance), so this example does not ask for motion details.
 
 | Path | What it does | Best for |
 | --- | --- | --- |
